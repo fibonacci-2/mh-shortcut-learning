@@ -13,6 +13,7 @@
 \usepackage{xcolor}
 \usepackage{titlesec}
 \usepackage{fancyhdr}
+\usepackage{multirow}
 
 % Geometry
 \geometry{letterpaper, margin=1in}
@@ -21,7 +22,7 @@
 \pagestyle{fancy}
 \fancyhf{}
 \fancyhead[L]{Shortcut Learning in Mental Health NLP}
-\fancyhead[R]{Research Proposal}
+\fancyhead[R]{Research Report}
 \fancyfoot[C]{\thepage}
 
 % Section formatting
@@ -47,17 +48,16 @@
 
 % Custom commands
 \newcommand{\todo}[1]{\textcolor{red}{[TODO: #1]}}
-\newcommand{\citet}[1]{\cite{#1}}
-\newcommand{\citep}[1]{\cite{#1}}
 
 \begin{document}
 
 % Title Page
 \title{\vspace{-2cm}
-    \textbf{Shortcut Learning in Black-Box Mental Health NLP Models:} \\
-    \large{A Critical Literature Review, Gap Analysis, and Recommended Methodology}
+    \textbf{Shortcut Learning in Mental Health NLP Models:} \\
+    \large{A Systematic Audit of Gender-Correlated Feature Reliance \\
+    in Transformer Representations}
 }
-\author{\textbf{Research Proposal — Literature Review Component} \\
+\author{
     \textit{April 2026}
 }
 \date{}
@@ -69,508 +69,390 @@
 \tableofcontents
 \newpage
 
-% Set page numbering after TOC
 \pagenumbering{arabic}
 \setcounter{page}{1}
 
+% ============================================================================
 \section*{Abstract}
 \addcontentsline{toc}{section}{Abstract}
 
-Mental health NLP models — from domain-adapted transformers like MentalBERT and MentalRoBERTa to large language models (LLMs) such as GPT-4 — have achieved high benchmark accuracy on depression detection, suicidal ideation classification, and related tasks. Yet growing evidence suggests these systems exploit \textit{shortcut cues} — spurious statistical correlations between surface-level textual features and diagnostic labels — rather than clinically meaningful signal. Proposed shortcuts include linguistic hedging style, first-person pronoun density, platform-specific writing conventions, and demographic proxies such as implied gender.
+Mental health NLP models achieve high benchmark accuracy on depression and suicidal ideation tasks, yet growing evidence suggests they exploit \textit{shortcut cues}---spurious correlations between surface-level textual features and diagnostic labels---rather than clinically meaningful signal. We present a systematic three-stage audit of gender-correlated shortcut learning in frozen DistilRoBERTa-base representations, using a gender-balanced dataset of 32,200 Reddit posts (16,100 male, 16,100 female) with strong self-disclosure gender labels and binary mental health condition labels.
 
-This review synthesizes the existing literature across three converging areas: (1) NLP model bias in mental health contexts, (2) shortcut/spurious-correlation learning in transformer-based classifiers, and (3) explainability and debiasing methods. We identify critical gaps — particularly the near-total absence of \textit{systematic shortcut auditing} on black-box mental health models — and propose a methodological architecture combining probing classifiers, SHAP/integrated-gradients attribution, structural causal modeling, and counterfactual data augmentation (CDA) to detect and mitigate shortcut reliance using three labeled datasets.
+In \textbf{Stage~1}, we engineer 14 open-lexicon linguistic features and identify 7 whose mutual information with the label drops 24--40\% when conditioned on gender, establishing them as shortcut candidates. In \textbf{Stage~2}, we show that all 7 shortcuts are highly recoverable from frozen [CLS] embeddings (probing AUC 0.83--0.98), that gender itself is encoded at AUC = 0.959, and that removing shortcuts degrades a 14-feature classifier by 9.0\%. In \textbf{Stage~3}, causal mediation analysis confirms all 7 shortcuts are statistically significant mediators of the gender$\to$label association (combined $\sim$30\% of the indirect effect), yet INLP concept erasure reveals that shortcut information is encoded redundantly across many embedding dimensions and that erasing all 7 shortcuts changes label prediction AUC by only $-0.012$. Counterfactual prediction analysis shows female posts are 3$\times$ more likely to have their predictions flipped after shortcut erasure (20.7\% vs.\ 6.8\%), demonstrating gender-asymmetric shortcut reliance. Conditional independence tests confirm that gender carries predictive information beyond what these shortcuts explain, indicating that debiasing shortcuts alone is necessary but insufficient.
 
-\newpage
-
+% ============================================================================
 \section{Introduction}
 
-Mental health disorders affect approximately one in eight people globally, yet access to timely diagnosis and intervention remains severely limited. This gap has motivated an explosion of NLP research aimed at automatic detection of depression, anxiety, suicidal ideation, stress, and related conditions from social media text, clinical notes, and conversational data. The field has produced increasingly capable models: from bag-of-words classifiers and LIWC-based systems in the early 2010s, to domain-adapted transformer variants (MentalBERT, MentalRoBERTa) and prompt-engineered LLMs (GPT-4, FLAN-T5) in the 2020s.
+Mental health disorders affect approximately one in eight people globally, yet access to timely diagnosis remains severely limited. This gap has motivated an explosion of NLP research aimed at automatic detection of depression, anxiety, suicidal ideation, and related conditions from social media text. Domain-adapted transformer models (MentalBERT, MentalRoBERTa; Ji et al., 2022) and prompted LLMs (GPT-4, Mental-LLM; Xu et al., 2024) routinely achieve F1 scores of 0.85--0.96 on benchmark Reddit datasets.
 
-Performance metrics have been impressive. Fine-tuned transformer models routinely achieve F1 scores of 0.85–0.96 on benchmark Reddit datasets. Yet this performance may be illusory. NLP classifiers are well-documented to exploit \textit{shortcuts} — features that are spuriously correlated with the target label in training data but are not causally related to the clinical construct of interest. In mental health contexts, this matters enormously: a model that fires on hedging language (``I feel like maybe I can't go on'') or writing style markers associated with gender, rather than on genuine psychopathological signal, will fail to generalize to new populations and may encode discriminatory patterns that disadvantage already-marginalized groups.
+Yet this performance may be illusory. NLP classifiers are well-documented to exploit \textit{shortcuts}---features spuriously correlated with the target label in training data but not causally related to the clinical construct of interest (Wang \& Culotta, 2020; Clark et al., 2019). In mental health contexts, the stakes are high: a model that fires on hedging language or first-person pronoun density---both gender-correlated stylistic features---rather than on genuine psychopathological signal will fail to generalize and may encode discriminatory patterns.
 
-\subsection*{The Central Hypothesis}
+Despite extensive documentation of shortcut learning in NLI, sentiment analysis, and toxicity detection, \textit{no systematic shortcut audit} has been conducted on mental health NLP representations. The evidence for shortcut reliance in this domain has been indirect: cross-platform generalization failure, MentalBERT's lexical dependency (Tang et al.), and performance gaps across demographic groups (Schuller et al., 2025). This paper addresses that gap directly.
 
-The central hypothesis of this research is that widely used mental health NLP models — including black-box LLMs and domain-adapted models like MentalBERT — rely substantially on shortcut cues such as:
+\subsection{Contributions}
 
-\begin{itemize}[leftmargin=*]
-    \item \textbf{Linguistic hedging} (``maybe,'' ``sort of,'' ``I think,'' ``kind of'') correlated with uncertainty and depression-adjacent expression
-    \item \textbf{First-person singular pronoun density} (``I,'' ``me,'' ``myself'') — a documented marker of depression but also a confound for writing style
-    \item \textbf{Implied gender} — with women statistically over-represented in mental health datasets and exhibiting different linguistic norms (hedging, relational language)
-    \item \textbf{Platform/subreddit membership} — platform-specific writing norms that signal community identity rather than clinical state
-    \item \textbf{Negative affect lexicon density} (purely sentiment-based shortcuts rather than clinical reasoning)
-    \item \textbf{Post metadata artifacts} — post length, timing, formatting conventions correlated with condition labels
-\end{itemize}
-
-This review surveys what is known, what has been done, and where the field has critical blind spots that this research program is positioned to fill.
-
-\section{Background: The Landscape of Mental Health NLP}
-
-\subsection{Models and Architectures}
-
-Mental health NLP has progressed through several generations of approaches:
-
-\paragraph{Lexical and feature-engineered models.}
-Early work relied on bag-of-words representations, TF-IDF features, and hand-crafted linguistic features from tools like LIWC (Linguistic Inquiry and Word Count). These models — typically logistic regression or SVM classifiers — were interpretable by design but limited in expressiveness. Their reliance on frequency-based features made them inherently susceptible to lexical shortcuts (e.g., suicidal posts containing the word ``die'' would be reliably flagged, regardless of context).
-
-\paragraph{Domain-adapted transformer models.}
-Ji et al. (2022) introduced MentalBERT and MentalRoBERTa — the first publicly available pretrained language models specifically designed for mental healthcare. Both were trained via continued pretraining on 13.6 million sentences from Reddit mental health communities (r/depression, r/SuicideWatch, r/Anxiety, r/bipolar, r/mentalhealth, r/mentalillness, r/offmychest). Domain adaptation improved performance over general BERT on depression detection, stress, anorexia, and suicidal ideation benchmarks. However, the models inherit the statistical regularities of their training corpora — including platform artifacts, demographic skews, and the writing conventions of Reddit's self-selected user base. Critically, MentalBERT's performance degrades substantially when domain-specific lexical cues (so-called ``topic words'') are removed from inputs, suggesting heavy reliance on such vocabulary rather than distributed semantic understanding.
-
-\paragraph{General-purpose LLMs.}
-GPT-3.5, GPT-4, and FLAN-T5 have been evaluated on mental health classification tasks, with performance approaching but not yet consistently matching specialized fine-tuned models. Mental-LLM (Xu et al., 2024) demonstrated that instruction fine-tuning on mental health tasks can bring FLAN-T5 within 4.8\% balanced accuracy of GPT-4, while being 150x smaller. However, even state-of-the-art LLMs exhibit documented racial and gender biases in mental health contexts, and their decision processes are entirely opaque to external auditors.
-
-\paragraph{Multiclass and comorbidity models.}
-Recent work has pushed toward multiclass classification (e.g., depression, anxiety, PTSD, suicidal ideation, stress). multiMentalRoBERTa achieved macro F1 of 0.839 across six conditions. Interestingly, performance improved when the ``Stress'' class was removed, suggesting that stress is \textit{linguistically diffuse} and overlaps with other categories — a signal that surface-level language alone may not cleanly separate constructs.
-
-\subsection{Training Data: The Reddit Problem}
-
-The dominant data paradigm in mental health NLP uses Reddit as its primary source. Posts from subreddits like r/depression or r/SuicideWatch are treated as positive examples; posts from r/casual or other general subreddits serve as negative controls. This design introduces multiple sources of shortcut contamination:
+We present a three-stage empirical audit pipeline:
 
 \begin{enumerate}[leftmargin=*]
-    \item \textbf{Subreddit membership as a proxy label.} A model that learns to detect subreddit identity — through vocabulary, writing style, community norms — will achieve high accuracy without learning anything about mental states.
-    
-    \item \textbf{Demographic skew.} Reddit user demographics are heavily skewed toward younger, Western, English-speaking individuals. Women and men express mental health differently and at different rates across platforms.
-    
-    \item \textbf{Self-selection bias.} Users who post in mental health subreddits differ systematically from those who do not, along dimensions that include writing style, linguistic sophistication, and community conventions — all of which can serve as shortcuts.
-    
-    \item \textbf{Cross-platform failure.} Models trained on Reddit underperform on clinical transcripts, Twitter data, and other platforms — a direct signature of platform-level shortcut learning. Studies comparing Reddit-trained models to other domains report F1 drops from above 0.90 to 0.50–0.73 when switching to elicited speech transcripts.
+    \item \textbf{Shortcut Candidate Extraction} (Stage~1): We engineer 14 open-lexicon features and use mutual information decomposition conditioned on gender to identify 7 features where $>$24\% of the label-predictive MI is gender-mediated.
+
+    \item \textbf{Shortcut Auditing} (Stage~2): We show via probing classifiers that all 7 shortcuts are recoverable from frozen DistilRoBERTa [CLS] embeddings (AUC 0.83--0.98), that gender is encoded at AUC = 0.959, and that SHAP attribution identifies first-person singular pronoun density as the dominant shortcut (41.7\% of total attribution mass).
+
+    \item \textbf{Causal Disentanglement} (Stage~3): We apply causal mediation analysis, INLP concept erasure, counterfactual prediction analysis, and conditional independence testing. We find that shortcuts are significant mediators ($\sim$30\% of indirect effect) but that shortcut information is deeply redundant in the embedding space, that female predictions are 3$\times$ more sensitive to shortcut removal, and that gender carries predictive information beyond what shortcuts explain.
 \end{enumerate}
 
-\section{Shortcut Learning in NLP: Mechanisms and Evidence}
+% ============================================================================
+\section{Related Work}
 
-\subsection{What Is Shortcut Learning?}
+\subsection{Mental Health NLP Models}
 
-Shortcut learning (also called spurious correlation learning) occurs when a model exploits statistical regularities in training data that are correlated with the target label but not causally or semantically connected to the task of interest. This phenomenon has been documented extensively in NLP: models in natural language inference (NLI) tasks exploit negation words and lexical overlap; sentiment classifiers learn that the word ``Spielberg'' predicts positive reviews; toxicity detectors learn that mentions of identity groups (Black people, gay men) predict toxicity — because hate speech about those groups is over-represented in training data.
+The field has progressed from lexical/feature-engineered approaches (LIWC-based logistic regression, SVM) to domain-adapted transformers. Ji et al.\ (2022) introduced MentalBERT and MentalRoBERTa, pretrained on 13.6 million Reddit mental health sentences. These models improve over general BERT on depression and suicidal ideation benchmarks but degrade substantially when domain-specific ``topic words'' are removed, suggesting heavy lexical reliance. General-purpose LLMs (GPT-4, FLAN-T5) have been evaluated on mental health tasks (Xu et al., 2024), approaching fine-tuned model performance while remaining opaque.
 
-The mechanisms driving shortcut learning include:
+\subsection{Shortcut Learning in NLP}
 
-\begin{itemize}[leftmargin=*]
-    \item \textbf{Over-parameterization.} Large models can achieve low training loss by memorizing spurious correlations, and do so more readily than learning harder semantic generalizations.
-    \item \textbf{Dataset artifacts.} Label imbalances and annotation conventions embed systematic biases. In mental health datasets, the very act of posting to a depression subreddit is a strong signal that overwhelms subtler psycholinguistic features.
-    \item \textbf{Distributional shortcuts.} Surface features (vocabulary, n-grams) are more readily learnable than structural or semantic relationships.
-\end{itemize}
+Shortcut learning occurs when models exploit statistical regularities correlated with labels but not causally related to the task (Wang \& Culotta, 2020). In NLI, models exploit negation words and lexical overlap (Clark et al., 2019, 2020); sentiment classifiers learn that ``Spielberg'' predicts positive reviews; toxicity detectors associate identity group mentions with toxicity. Mechanisms include over-parameterization, dataset artifacts, and distributional shortcuts. The Less-Learn-Shortcut (LLS) framework (Huang et al., 2023) and Product-of-Experts approaches (Clark et al., 2020) represent mitigation strategies, but neither has been applied to mental health NLP.
 
-Crucially, shortcuts allow models to excel on in-distribution test sets while failing to generalize out-of-distribution. This is deeply problematic for clinical deployment, where the goal is precisely to detect mental health risk in populations not represented in training data.
+\subsection{Gender Bias in NLP and Mental Health}
 
-\subsection{Documented Shortcuts in NLP Models}
+Gender bias is documented in word embeddings for depression prediction (arXiv:2212.07852), with different embeddings carrying different directional biases that propagate to downstream classification. Straw \& Callison-Burch (2020) documented performance biases across gender, race, and other demographics in mental health AI. Schuller et al.\ (2025) found that both age and gender shift classification outcomes in multilingual depression detection. Women express mental health differently from men---with more emotional disclosure, hedging, and relational language---and are over-represented in many mental health datasets, creating conditions for gender-mediated shortcut learning. However, the \textit{mechanism} by which gender-correlated features mediate model predictions has not been traced at the feature level.
 
-Across the NLP literature, key shortcut types have been identified:
+\subsection{Probing, Attribution, and Causal Methods}
 
-\paragraph{Lexical shortcuts.}
-Classifiers learn individual tokens (words) as reliable predictors. Wang and Culotta (2020) demonstrated that BERT-based sentiment classifiers assign high predictive weight to words like ``book'' or ``movie'' that co-occur with certain labels but do not causally determine sentiment. After fine-tuning, these tokens lose their semantic properties — they ``align'' with genuine tokens, preventing the model from distinguishing real features from artifacts.
+Probing classifiers (Belinkov, 2022) test whether specific properties are encoded in model representations. SHAP (Lundberg \& Lee, 2017) provides feature-level attribution. INLP (Ravfogel et al., 2020) removes concept information from embeddings via iterative nullspace projection. Causal mediation analysis (Imai et al., 2010) decomposes total effects into direct and indirect components. These tools have been applied individually across NLP but have not been combined into a systematic shortcut audit for mental health models.
 
-\paragraph{Stylistic shortcuts.}
-Writing style — hedging language, punctuation patterns, formality level, post length — correlates with both demographic characteristics and mental health labels. Models may learn to classify based on style rather than content.
+% ============================================================================
+\section{Data}
 
-\paragraph{Demographic proxies.}
-Gender, age, and cultural background correlate with both linguistic style and mental health presentation. Pruthi et al. (2020) showed gender bias in NLP occupation classification tasks; similar mechanisms are expected in mental health classification, since (a) women are linguistically distinctive in ways documented across languages (more hedging, more first-person pronouns, more relational language) and (b) mental health conditions are unevenly distributed by gender in the training data.
+\subsection{Dataset}
 
-\paragraph{Annotation artifacts.}
-Labels assigned by annotators (including self-reported subreddit membership) introduce systematic biases. In NLI datasets, annotators generating ``entailment'' hypotheses systematically use certain constructions (purpose clauses, synonym substitution) that models learn to recognize as shortcuts.
-
-\subsection{Evidence of Shortcuts in Mental Health Models Specifically}
-
-Direct evidence for shortcut learning in mental health NLP is still sparse — this is the gap this research targets — but indirect signals are strong:
-
-\begin{itemize}[leftmargin=*]
-    \item \textbf{MentalBERT lexical dependency.} Tang et al. found that MentalBERT's performance drops substantially more than general BERT when domain-specific ``topic words'' are removed, indicating that the model's advantage over generic representations is substantially lexical rather than semantic.
-    
-    \item \textbf{Cross-platform generalization failure.} MentalBERT and MentalRoBERTa excel on Reddit datasets but underperform on other data types. This is a canonical signature of shortcut learning: the model has learned the features of a specific data-generating distribution, not the underlying construct.
-    
-    \item \textbf{Gender bias in word embeddings for depression.} A 2022 arXiv paper specifically analyzed gender bias in four pretrained word embeddings used for depression phenotype recognition, finding that different embeddings carry different directional biases for depression toward gender groups, and that these biases propagate to the downstream classification task.
-    
-    \item \textbf{Demographic performance gaps in multilingual depression detection.} A 2025 \textit{Scientific Reports} study systematically evaluated demographic bias in LLMs for depression detection across English, Spanish, and Dutch. Age consistently produced more pronounced performance differences than gender, but both demographic factors shifted classification outcomes when balanced datasets were constructed. This suggests models learn demographic-correlated shortcuts.
-    
-    \item \textbf{High accuracy on Reddit, poor clinical translation.} The field-wide pattern of achieving F1 > 0.90 on Reddit-based benchmarks while failing to achieve clinically actionable performance in real-world settings is consistent with shortcut learning at scale.
-\end{itemize}
-
-\section{Candidate Shortcut Cues in Mental Health Text}
-
-Based on the literature, this research hypothesizes the following as primary shortcut candidates:
-
-\subsection{Linguistic Hedging}
-
-Hedging — the use of epistemic modifiers that soften or qualify assertions (``maybe,'' ``I think,'' ``kind of,'' ``sort of,'' ``it seems,'' ``possibly'') — is documented as (a) more prevalent in women's speech, (b) associated with depression-adjacent uncertainty and self-doubt, and (c) a stylistic convention in Reddit communities. A model may learn that hedging language predicts depression not because hedging causes or reflects depression, but because hedged writing style is over-represented among posters in mental health subreddits.
-
-\subsection{First-Person Singular Pronoun Density}
-
-Elevated use of ``I,'' ``me,'' ``myself,'' and ``my'' is a well-documented correlate of depression in the NLP literature, and is thought to reflect self-focused processing. However, it is also a writing style feature that varies by demographics, platform, and task type. It may function as a genuine signal in some contexts and a shortcut in others. A model relying on this feature without controlling for base-rate variation by context is exploiting a shortcut.
-
-\subsection{Implied Gender}
-
-Women express mental health differently from men — with more emotional disclosure, more hedging, more relational language — and are over-represented in many mental health datasets. A model that learns gender-correlated language features as proxies for clinical status will exhibit differential accuracy across genders and will propagate discriminatory patterns.
-
-\subsection{Platform and Subreddit Artifacts}
-
-Reddit mental health communities have distinctive writing conventions, in-group vocabulary (e.g., specific abbreviations, references to therapy types), and community norms. A model can learn to detect subreddit identity through these conventions without engaging with clinical content.
-
-\subsection{Post Metadata Features}
-
-Post length, formatting, punctuation style, time-of-day metadata (if available), and emoji/emoticon usage all vary systematically across labeled categories and may function as shortcuts.
-
-\subsection{Negative Affect Lexicon as a Blunt Shortcut}
-
-A model that simply detects ``sad'' words from a sentiment lexicon will achieve high accuracy on depression datasets without genuine clinical reasoning. Domain-specific models trained on mental health corpora may have implicitly learned a refined version of this — associating a dense negative-affect vocabulary with the positive class rather than engaging with the narrative structure of distress.
-
-\section{What Has Been Done: Bias Mitigation in Mental Health NLP}
-
-\subsection{Bias Documentation}
-
-The most well-developed strand of work involves documenting bias rather than correcting it. Straw and Callison-Burch (2020), cited in multiple mental health AI reviews, showed that NLP systems produce significant performance biases across gender, race, ethnicity, religion, sexuality, culture, and age. A 2021 PMC study evaluated bias in GloVe and Word2Vec embeddings used in psychiatric NLP, finding that each stage of model development — data collection, model design, and results interpretation — introduces distinct biases. A 2024 call-to-action paper in \textit{Frontiers} argued that ``when algorithmic decisions are systematically biased against certain groups, those AI models will perpetuate rather than mitigate existing disparities in mental health care.'' These papers establish the problem space but do not empirically audit shortcut mechanisms.
-
-\subsection{Explainability Applications}
-
-A growing body of work applies XAI techniques to mental health models:
-
-\paragraph{SHAP and LIME.}
-These post-hoc attribution methods assign importance scores to input tokens for individual predictions. Applied to MentalBERT and related models, they reveal which words drive classification decisions. The multiMentalRoBERTa paper used Layer Integrated Gradients and KeyBERT to identify lexical cues — finding that while suicidal ideation predictions were driven by terms like ``suicidal thoughts'' and ``plan jumping car,'' depression predictions were driven by more diffuse language including ``functional depression'' and ``feel better.'' This is a step toward shortcut identification, but the analysis was not framed as a shortcut audit and did not test whether these features are causally meaningful or spurious.
-
-\paragraph{Attention visualization.}
-Some work has examined BERT attention patterns in mental health contexts, but attention weights are now understood to be unreliable explanations of model behavior — they do not necessarily reflect causal feature importance.
-
-\paragraph{LIWC and psychological feature integration.}
-Multimodal approaches have attempted to inject domain knowledge (LIWC features, LDA topics, NRC emotion scores) alongside transformer representations, achieving marginal performance gains. These hybrid models are somewhat more interpretable but have not been audited for shortcut reliance.
-
-\subsection{Debiasing Techniques Applied to NLP (Generally)}
-
-The general NLP literature offers several debiasing methodologies with potential application to mental health:
-
-\begin{itemize}[leftmargin=*]
-    \item \textbf{Counterfactual Data Augmentation (CDA).} Kaushik et al. (2020) demonstrated that augmenting training data with counterfactually edited examples — where a minimal change to a text flips its label — significantly improves model robustness to spurious correlations. Applied to mental health, this would involve generating variants of posts where demographic markers are modified (e.g., changing implied gender pronouns) to test and correct for demographic shortcuts.
-    
-    \item \textbf{Dataset balancing and re-sampling.} Ensuring that spurious features are not predictive in the training set (e.g., equalizing gender representation across labels). This addresses shortcuts at the data level.
-    
-    \item \textbf{Ensemble debiasing (Product of Experts).} Training a ``bias model'' on easy-to-learn shortcuts and then using its predictions to downweight confident examples during training of the main model. Clark et al. (2019, 2020) demonstrated this for NLI; the technique is task-agnostic.
-    
-    \item \textbf{Structural Causal Models (SCMs).} Tian et al. (2022) and others have proposed framing shortcut learning through a causal lens: identifying the confounders that create spurious label-feature associations and designing interventions to remove them. This is the most principled approach but requires explicit modeling of the causal graph.
-    
-    \item \textbf{Adversarial debiasing.} Training a classifier simultaneously with an adversary that attempts to predict protected attributes (gender, age) from the model's representations. If the adversary cannot predict these attributes, the main model's representations are (approximately) free of demographic shortcuts.
-    
-    \item \textbf{Less-Learn-Shortcut (LLS).} Huang et al. (2023) proposed penalizing training examples according to their ``shortcut degree'' — how strongly they exploit known biased words — reducing model reliance on these features without task-specific modification.
-\end{itemize}
-
-\subsection{Probing Classifiers}
-
-Probing is a technique for testing whether a specific property (e.g., gender, hedging style, platform identity) is encoded in a model's internal representations. A linear or lightweight probing classifier is trained on the model's hidden states to predict the property of interest. High probing accuracy indicates the property is encoded — and if that property is also predictive of the output label, the model is likely exploiting it as a shortcut.
-
-Probing classifiers have been widely used to study what general-purpose language models encode, but their application to mental health models specifically has not been systematically explored.
-
-\section{What Has NOT Been Done: Critical Gaps}
-
-The following represent the primary unaddressed gaps that this research program targets:
+We use a curated subset of the Mindset corpus (Reddit mental health and control subreddits) with strong self-disclosure gender labels obtained via high-precision regex matching on explicit gender statements (e.g., ``I'm a 24F,'' ``as a man'').
 
 \begin{table}[htbp]
 \centering
-\caption{Critical Research Gaps}
-\label{tab:gaps}
-\begin{tabular}{|p{0.85\linewidth}|}
-\hline
-\multicolumn{1}{|c|}{\textbf{Research Gap}} \\
-\hline
-\textbf{Gap 1:} No systematic shortcut audit of mental health-specific models \\
-\hline
-\textbf{Gap 2:} Linguistic hedging has not been tested as a shortcut in mental health NLP \\
-\hline
-\textbf{Gap 3:} Gender shortcut mechanism is underspecified \\
-\hline
-\textbf{Gap 4:} Causal framework absent from mental health NLP debiasing \\
-\hline
-\textbf{Gap 5:} Multi-dataset comparison for shortcut generalization \\
-\hline
-\textbf{Gap 6:} LLM shortcut behavior unexplored \\
-\hline
+\caption{Dataset characteristics}
+\label{tab:data}
+\begin{tabular}{ll}
+\toprule
+\textbf{Property} & \textbf{Value} \\
+\midrule
+Total posts & 32,200 \\
+Male / Female & 16,100 / 16,100 (balanced) \\
+Control / MH-positive & 22,601 (70.2\%) / 9,599 (29.8\%) \\
+Female positive rate & 43.0\% \\
+Male positive rate & 16.8\% \\
+Gender$\times$label $\chi^2$ & $p \approx 0$ \\
+\bottomrule
 \end{tabular}
 \end{table}
 
-\subsection{Gap 1: No Systematic Shortcut Audit of Mental Health-Specific Models}
+The strong gender--label correlation (43\% vs.\ 17\% positive rate) is a design feature, not a limitation: it creates the conditions under which gender-mediated shortcut learning is most likely to occur, making this dataset ideal for auditing purposes.
 
-While general NLP debiasing methods are mature, no published study has conducted a \textit{systematic shortcut audit} specifically on MentalBERT, MentalRoBERTa, or LLMs in mental health classification contexts. The evidence for shortcut reliance is indirect (cross-platform failure, lexical dependency). A direct audit — identifying which features function as shortcuts, quantifying their contribution to model accuracy, and testing whether their removal causes calibrated performance degradation — has not been done.
+\subsection{Feature Engineering}
 
-\subsection{Gap 2: Linguistic Hedging Has Not Been Tested as a Shortcut in Mental Health NLP}
+We replace proprietary LIWC-22 features with 14 open-lexicon linguistic features computed from curated word lists. Each feature is a normalized token-count density (count / total tokens) or a log-transformed count:
 
-Hedging is documented as a gender-correlated linguistic feature and is hypothesized to co-occur with depression-adjacent expression. It has been studied in bias detection for news text and in gender bias in machine translation. Yet no study has examined whether mental health classifiers exploit hedging as a predictive shortcut rather than as a symptom-informative feature.
-
-\subsection{Gap 3: Gender Shortcut Mechanism Is Underspecified}
-
-While gender bias has been documented in word embeddings for depression prediction (arXiv:2212.07852) and performance gaps across genders have been reported, the \textit{mechanism} has not been characterized. Is the model learning gender-correlated vocabulary? Pronoun patterns? Writing style? Hedging frequency? The pathway from training data demographic imbalance to classification outcome has not been traced at the feature level.
-
-\subsection{Gap 4: Causal Framework Absent from Mental Health NLP Debiasing}
-
-Debiasing work in mental health NLP has relied on post-hoc attribution and dataset-level fixes, but has not adopted the causal framing (structural causal models, do-calculus, counterfactual interventions) that is now standard in general NLP debiasing. This means it cannot distinguish genuine correlates of depression from confounded proxies.
-
-\subsection{Gap 5: Multi-Dataset Comparison for Shortcut Generalization}
-
-Most shortcut analyses focus on a single dataset. Mental health NLP uses multiple benchmark datasets (eRisk, CLPsych, Dreaddit, SWMH, ANGST, etc.) with different data sources, labeling methodologies, and demographic compositions. A cross-dataset shortcut analysis — asking whether the same features function as shortcuts across datasets — has not been conducted. Such analysis would reveal which shortcuts are dataset-specific artifacts versus broader model tendencies.
-
-\subsection{Gap 6: LLM Shortcut Behavior Unexplored}
-
-The Mental-LLM work (Xu et al., 2024) established that LLMs can perform comparably to specialized models on mental health tasks, but did not investigate \textit{what they rely on}. The ``black-box'' nature of LLMs — flagged in reviews as a major limitation — has not been formally addressed through shortcut auditing. GPT-4 may achieve its performance through genuine clinical reasoning, or through sophisticated exploitation of surface statistics; this is unknown.
-
-\section{Recommended Architecture and Methodology}
-
-\subsection{Overview}
-
-The proposed methodology is a multi-stage pipeline:
-
-\begin{figure}[htbp]
+\begin{table}[htbp]
 \centering
-\begin{tabular}{|c|}
-\hline
-\textbf{Stage 1: Shortcut Candidate Extraction} \\
-\text{(Feature Engineering + Corpus Analysis)} \\
-\hline
-$\downarrow$ \\
-\hline
-\textbf{Stage 2: Shortcut Auditing} \\
-\text{(Probing Classifiers + Attribution Analysis)} \\
-\hline
-$\downarrow$ \\
-\hline
-\textbf{Stage 3: Causal Disentanglement} \\
-\text{(Structural Causal Models + Counterfactual Analysis)} \\
-\hline
-$\downarrow$ \\
-\hline
-\textbf{Stage 4: Debiasing Intervention} \\
-\text{(CDA + Adversarial Training + Loss Reweighting)} \\
-\hline
-$\downarrow$ \\
-\hline
-\textbf{Stage 5: Evaluation} \\
-\text{(In-distribution + Out-of-distribution + Fairness Metrics)} \\
-\hline
+\caption{14 engineered linguistic features}
+\label{tab:features}
+\small
+\begin{tabular}{lp{8cm}}
+\toprule
+\textbf{Feature} & \textbf{Description} \\
+\midrule
+\texttt{fp\_singular} & First-person singular pronoun ratio (I, me, my, myself) \\
+\texttt{fp\_plural} & First-person plural pronoun ratio (we, us, our) \\
+\texttt{emotional\_feeling} & Emotional feeling word density (feel, felt, feeling, \ldots) \\
+\texttt{social\_relational} & Social/relational word density (friend, family, love, \ldots) \\
+\texttt{certainty} & Certainty word density (always, never, definitely, \ldots) \\
+\texttt{negative\_emotion} & Negative emotion word density (sad, angry, hurt, \ldots) \\
+\texttt{swear\_words} & Profanity density \\
+\texttt{excl\_intensifiers} & Exclamation marks + intensifier density (very, so, really, \ldots) \\
+\texttt{question\_density} & Question mark density \\
+\texttt{post\_length} & $\log_{10}$ token count \\
+\texttt{hedge\_density} & Hedge/epistemic marker density (maybe, perhaps, sort of, \ldots) \\
+\texttt{apology\_selfblame} & Apology \& self-blame word density (sorry, fault, blame, \ldots) \\
+\texttt{anger} & Anger word density (hate, furious, rage, \ldots) \\
+\texttt{body\_health} & Body/health word density (pain, sleep, tired, \ldots) \\
+\bottomrule
 \end{tabular}
-\caption{Proposed methodological pipeline for shortcut auditing and mitigation}
-\label{fig:pipeline}
-\end{figure}
+\end{table}
 
-\subsection{Datasets}
+% ============================================================================
+\section{Methods}
 
-The three labeled datasets provide an opportunity for cross-dataset analysis — essential for distinguishing dataset-specific artifacts from model-level shortcut tendencies. For each dataset:
-
-\begin{itemize}[leftmargin=*]
-    \item Extract metadata: class distributions, inferred demographics (if available), text source and platform
-    \item Characterize linguistic profiles: hedging density, pronoun ratios, sentiment distribution, post length distribution, vocabulary overlap across classes
-    \item Test whether shortcut candidates (hedging, pronouns, gender-correlated features) are predictive of the label \textit{independent of clinical content} by training simple logistic regression classifiers on these features alone and measuring their accuracy
-\end{itemize}
-
-\subsection{Models to Audit}
-
-The audit should cover the following models as ``black boxes'':
-
-\begin{itemize}[leftmargin=*]
-    \item \textbf{MentalBERT} (base, English)
-    \item \textbf{MentalRoBERTa} (base, English)
-    \item \textbf{GPT-4 / GPT-4o} (via API, zero-shot and few-shot)
-    \item \textbf{FLAN-T5 (Mental-Alpaca)} (fine-tuned variant)
-    \item \textbf{General RoBERTa-base} (as a baseline comparator)
-\end{itemize}
+Our audit pipeline consists of three stages, each building on the outputs of the previous stage.
 
 \subsection{Stage 1: Shortcut Candidate Extraction}
 
-\paragraph{Feature engineering.}
-For each post in the three datasets, extract:
+\paragraph{Standalone predictive power.}
+For each of the 14 features, we train a logistic regression classifier (5-fold stratified CV) to predict the binary mental health label using that feature alone, and record the AUC.
 
+\paragraph{Mutual information decomposition.}
+For each feature $f$, we compute:
 \begin{itemize}[leftmargin=*]
-    \item Hedging score: count of hedging markers from a validated lexicon (Hyland 2005; LIWC hedging category)
-    \item First-person pronoun ratio: I/me/my/myself count / total word count
-    \item Negative affect score: LIWC negemo category
-    \item Post length (tokens)
-    \item Readability metrics (Flesch-Kincaid, Coleman-Liau)
-    \item Gender-associated language score: using pre-trained gender-language association embeddings (e.g., adapted from GloVe gender-bias studies)
-    \item Emotional intensity markers (exclamation points, capitalization, ellipses)
-    \item Domain vocabulary density (density of terms from a mental health lexicon)
+    \item $I(f; Y)$: mutual information between feature $f$ and label $Y$
+    \item $I(f; Y \mid G)$: conditional MI given gender $G$
+    \item MI drop $= 1 - I(f; Y \mid G) / I(f; Y)$
 \end{itemize}
+A high MI drop indicates that a substantial fraction of the feature's label-predictive information is mediated by gender---marking it as a shortcut candidate. We flag features with MI drop $>$24\%.
 
-\paragraph{Baseline spurious-feature classifiers.}
-Train simple logistic regression classifiers on each feature (or combined shortcut features) against labels. If these achieve >60\% accuracy (well above chance for balanced datasets), the feature is a candidate shortcut.
+\subsection{Stage 2: Shortcut Auditing}
 
-\subsection{Stage 2: Shortcut Auditing via Probing and Attribution}
+\paragraph{[CLS] embedding extraction.}
+We extract frozen [CLS] embeddings from DistilRoBERTa-base (no fine-tuning) for all 32,200 posts, yielding a $32{,}200 \times 768$ matrix.
 
 \paragraph{Probing classifiers.}
-For each shortcut candidate:
+For each shortcut feature, gender, and the binary label, we train logistic probing classifiers (5-fold stratified CV) on the [CLS] embeddings. High probing AUC indicates the property is encoded in the pre-trained representations.
 
-\begin{enumerate}[leftmargin=*]
-    \item Extract representations from each transformer model's intermediate layers (layers 4, 8, 12 for BERT-base; multiple layers for larger models)
-    \item Train linear probing classifiers on these representations to predict the shortcut feature (e.g., high-hedging vs. low-hedging posts, or inferred gender)
-    \item Measure probing accuracy at each layer
-    \item Correlate probing accuracy (shortcut encoding) with model prediction confidence
-\end{enumerate}
+\paragraph{SHAP attribution.}
+We train a logistic regression model on the 7 shortcut features to predict the label and compute SHAP values for all 32,200 posts, identifying which shortcuts carry the most predictive weight.
 
-High probing accuracy for a shortcut + high correlation with model predictions indicates the model is exploiting that shortcut.
-
-\paragraph{Attribution analysis.}
-Apply the following XAI methods:
-
-\begin{itemize}[leftmargin=*]
-    \item \textbf{Integrated Gradients (IG):} Compute attribution scores for each token in each post for the correct-class prediction. Aggregate by token type (hedging markers, pronouns, domain-specific terms, neutral words). If hedging markers consistently receive high attribution, they are functioning as decision-relevant shortcuts.
-    
-    \item \textbf{SHAP (token-level):} Apply SHAP TextExplainer to a sample of predictions from each model. Compute mean absolute SHAP values for each shortcut feature category.
-    
-    \item \textbf{Leave-one-out ablation:} For each identified shortcut (e.g., all hedging tokens), systematically mask them and measure performance change. A model that degrades more than chance when hedging tokens are masked is over-relying on them.
-\end{itemize}
-
-\paragraph{Perturbation testing.}
-Construct controlled perturbation sets:
-
-\begin{itemize}[leftmargin=*]
-    \item Replace hedging phrases with direct statements (e.g., ``maybe I can't cope'' $\rightarrow$ ``I can't cope'') and measure prediction change
-    \item Replace first-person pronouns with third-person (``I feel hopeless'' $\rightarrow$ ``She feels hopeless'') and measure demographic shortcut exploitation
-    \item Remove all domain-specific mental health vocabulary and measure residual accuracy
-\end{itemize}
+\paragraph{Feature ablation.}
+We measure the AUC of the full 14-feature model, then ablate each shortcut feature individually and all 7 simultaneously, recording AUC changes. We further stratify by gender to detect asymmetric reliance.
 
 \subsection{Stage 3: Causal Disentanglement}
 
-Adopt a Structural Causal Model (SCM) framing. The causal graph of interest is:
-
+\paragraph{Structural causal model.}
+We formalize the hypothesized causal graph:
 \begin{verbatim}
-[Mental Health State] → [Authentic Clinical Language] → [Model Prediction]
-[Demographics (Gender, Age)] → [Writing Style (Hedging, Pronouns)] → [Model Prediction]
-[Platform/Subreddit] → [Community Writing Norms] → [Model Prediction]
+    Gender (G) --> Shortcuts (S) --> Embedding (E) --> Prediction (Y-hat)
+    Gender (G) --> Clinical Signal (C) --> Embedding (E) --> Prediction (Y-hat)
+    Gender (G) ..............................-> Prediction (Y-hat)  [direct bias?]
 \end{verbatim}
 
-The goal is to identify whether the model's predictions are substantially mediated by the shortcut pathways (demographics $\rightarrow$ writing style $\rightarrow$ prediction) rather than the causal pathway (mental health state $\rightarrow$ authentic language $\rightarrow$ prediction).
-
-Use the following operationalization:
-
+\paragraph{Causal mediation analysis.}
+Following Imai et al.\ (2010), for each shortcut $M$ we estimate:
 \begin{itemize}[leftmargin=*]
-    \item Apply Debiasing NLU via Causal Intervention (Tian et al., 2022): formulate a SCM for the classification task, identify the confounder representing writing-style preferences, and intervene on this confounder during inference.
-    \item Apply Average Treatment Effect (ATE) estimation (following Bansal \& Sharma, 2023): estimate the causal effect of each shortcut feature on model predictions using propensity-based doubly robust estimation or Riesz Representer-based estimators.
+    \item \textbf{ACME} (Average Causal Mediation Effect): the indirect effect $G \to M \to Y$
+    \item \textbf{ADE} (Average Direct Effect): $G \to Y$ not through $M$
+    \item \textbf{Proportion mediated}: ACME / (ACME + ADE)
 \end{itemize}
+with 1,000 bootstrap replications for 95\% confidence intervals.
 
-\subsection{Stage 4: Debiasing Interventions}
+\paragraph{INLP concept erasure.}
+For each shortcut (binarized at the median), we apply Iterative Nullspace Projection (Ravfogel et al., 2020) with up to 15 iterations to remove the shortcut's linear direction from [CLS] embeddings. We then re-probe for (a) the erased concept, (b) gender, and (c) the label, measuring AUC changes. We also perform sequential erasure of all 7 shortcuts (removing 105 total directions) and direct gender erasure for comparison.
 
-Test the following interventions sequentially:
+\paragraph{Counterfactual prediction analysis.}
+We train a logistic label classifier on the original [CLS] embeddings, then apply it to each set of erased embeddings. Prediction flips (original $\neq$ counterfactual) are recorded and stratified by gender to measure asymmetric sensitivity.
 
-\paragraph{Intervention 1: Counterfactual Data Augmentation (CDA).}
-For each training example:
-\begin{itemize}
-    \item Generate a counterfactual by minimally editing shortcut features (e.g., change hedging $\rightarrow$ direct language; swap gender pronouns; normalize post length)
-    \item Include both original and counterfactual in training
-    \item The model must make consistent predictions across the pair, forcing it to ignore shortcut variation
-\end{itemize}
-This can be partially automated using LLMs (e.g., GPT-4 as an editor for controlled paraphrase generation).
+\paragraph{Conditional independence tests.}
+We test three d-separation hypotheses from the SCM via likelihood-ratio tests:
+\begin{enumerate}[leftmargin=*]
+    \item $Y \perp G \mid S$ (7 shortcuts): Does gender add predictive power beyond shortcuts?
+    \item $G \perp Y \mid S$: Does the label help predict gender beyond shortcuts?
+    \item $Y \perp G \mid X_{14}$ (all 14 features): Does gender add power beyond all linguistic features?
+\end{enumerate}
 
-\paragraph{Intervention 2: Adversarial Debiasing.}
-Train an adversarial head that attempts to predict shortcut features (implied gender, hedging level) from the model's [CLS] token representation. Use gradient reversal to force the model to produce representations from which these features cannot be recovered.
+% ============================================================================
+\section{Results}
 
-\paragraph{Intervention 3: Loss Reweighting (LLS-style).}
-Identify ``biased'' training examples — those where shortcut features are strongly predictive of the label — and downweight their contribution to the training loss. Unbiased examples (where the label must be predicted from clinical content) receive higher weight.
+\subsection{Stage 1: Shortcut Candidates}
 
-\paragraph{Intervention 4: Ensemble Debiasing (Product of Experts).}
-Train a ``shortcut-only'' model on the shortcut feature vectors (no text). Use this model's predictions to upweight examples where the shortcut model is uncertain, ensuring the main model is trained primarily on hard cases that require genuine clinical reasoning.
+Individual feature AUCs range from 0.50 (\texttt{question\_density}) to 0.64 (\texttt{fp\_singular}). The combined 14-feature logistic model achieves AUC = 0.709.
 
-\subsection{Stage 5: Evaluation Framework}
-
-\begin{itemize}[leftmargin=*]
-    \item \textbf{In-distribution evaluation.} Standard F1, precision, recall on held-out splits of each dataset.
-    
-    \item \textbf{Out-of-distribution evaluation.} Test models trained on Dataset A against Datasets B and C (cross-dataset generalization). A model relying on dataset-specific shortcuts will degrade substantially; a debiased model should generalize better.
-    
-    \item \textbf{Shortcut suppression metrics.}
-    \begin{itemize}
-        \item Delta F1 after shortcut ablation: difference in F1 when shortcut tokens are removed. Smaller delta = less shortcut reliance.
-        \item Probing accuracy before and after debiasing: should decrease for shortcut features, remain stable for clinical features.
-    \end{itemize}
-    
-    \item \textbf{Fairness metrics.}
-    \begin{itemize}
-        \item Equal opportunity (true positive rate parity across gender groups)
-        \item Equalized odds (both TPR and FPR parity)
-        \item Demographic parity of high-confidence predictions
-    \end{itemize}
-    
-    \item \textbf{Clinical validity check.}
-    A small human annotation study: present model saliency maps (top-10 attributed tokens per prediction) to mental health professionals and ask them to rate whether the highlighted features are clinically informative or spurious. This provides an external validity check on the attribution analysis.
-\end{itemize}
-
-\section{Summary of Literature and Gaps}
+MI decomposition identifies 7 features with MI drop $>$24\% when conditioned on gender:
 
 \begin{table}[htbp]
 \centering
-\caption{Summary: What Exists vs. What Is Missing}
-\label{tab:summary}
-\begin{tabular}{|p{0.45\linewidth}|p{0.45\linewidth}|}
-\hline
-\textbf{What Exists} & \textbf{What Is Missing} \\
-\hline
-MentalBERT, MentalRoBERTa, LLM fine-tuning, multiclass classifiers & Shortcut mechanism auditing; causal analysis of what drives performance \\
-\hline
-Shortcut learning well-documented for NLI, sentiment, toxicity & Almost no direct application to mental health classification \\
-\hline
-Gender bias documented in embeddings for depression; performance gaps noted & Feature-level mechanism not traced; hedging as shortcut not tested \\
-\hline
-Hedging, pronouns, style documented as bias vectors in MT and general NLP & Never systematically tested as mental health model shortcuts \\
-\hline
-SHAP/LIME applied for token attribution & Not connected to shortcut detection or causal debiasing \\
-\hline
-CDA, adversarial training, LLS, ensemble methods mature in general NLP & Not applied to mental health domain with shortcut-auditing rationale \\
-\hline
-Cross-platform failure documented & Not analyzed as signature of specific shortcut mechanisms \\
-\hline
-SCMs applied to NLI debiasing & Absent from mental health NLP literature \\
-\hline
+\caption{MI-flagged shortcut candidates (MI drop $>$ 24\%)}
+\label{tab:shortcuts}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Feature} & \textbf{MI drop (\%)} & \textbf{AUC} & \textbf{Association} \\
+\midrule
+\texttt{fp\_singular} & 40.4 & 0.640 & Feminine \\
+\texttt{excl\_intensifiers} & 37.2 & 0.507 & Feminine \\
+\texttt{hedge\_density} & 35.9 & 0.538 & Feminine \\
+\texttt{negative\_emotion} & 31.6 & 0.585 & Both \\
+\texttt{post\_length} & 25.3 & 0.593 & Mixed \\
+\texttt{emotional\_feeling} & 25.4 & 0.574 & Feminine \\
+\texttt{social\_relational} & 24.0 & 0.569 & Both \\
+\bottomrule
 \end{tabular}
 \end{table}
 
-\section{Conclusion and Significance}
+\texttt{fp\_singular} has both the highest MI drop (40.4\%) and the highest standalone AUC (0.640), making it the single most exploitable shortcut.
 
-Mental health NLP is at a critical juncture. Models are achieving high benchmark scores while remaining opaque, demographically biased, and potentially reliant on clinical non-signal. The clinical stakes — missed diagnoses, differential accuracy across demographic groups, encoding of existing health disparities — make this a problem of urgent practical importance.
+\subsection{Stage 2: Shortcut Encoding in [CLS]}
 
-This research program fills a specific and consequential gap: the systematic identification and mitigation of shortcut cues in black-box mental health NLP models. By combining probing classifiers, attribution analysis, counterfactual perturbation, structural causal models, and a suite of debiasing interventions, applied across three labeled datasets, the work will produce both empirical findings about what current models actually rely on and concrete methodological tools for building more robust, fair, and clinically valid mental health AI systems.
+\paragraph{Probing results.}
+All 7 shortcut features are highly recoverable from the \textit{unfinetuned} [CLS] embeddings (Table~\ref{tab:probing}). Gender itself is encoded at AUC = 0.959, confirming that DistilRoBERTa pre-training captures strong gender signal from text alone.
 
-The hypothesis — that models like MentalBERT and GPT-4 exploit shortcuts including linguistic hedging, pronoun density, and gender-correlated style rather than clinically meaningful signal — is well-grounded in the convergent literatures reviewed here, and testable with the proposed methodology. The potential impact is high: the findings could reshape evaluation standards, data collection practices, and model development norms across the field.
+\begin{table}[htbp]
+\centering
+\caption{Probing classifier AUCs on frozen DistilRoBERTa [CLS]}
+\label{tab:probing}
+\begin{tabular}{lc}
+\toprule
+\textbf{Probe target} & \textbf{AUC} \\
+\midrule
+\texttt{post\_length} & 0.984 \\
+\texttt{fp\_singular} & 0.976 \\
+\texttt{social\_relational} & 0.923 \\
+\texttt{emotional\_feeling} & 0.904 \\
+\texttt{negative\_emotion} & 0.897 \\
+\texttt{excl\_intensifiers} & 0.882 \\
+\texttt{hedge\_density} & 0.832 \\
+\midrule
+Gender (m/f) & 0.959 \\
+Binary label & 0.798 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{SHAP attribution.}
+A logistic model trained on the 7 shortcut features achieves AUC = 0.693. SHAP analysis reveals \texttt{fp\_singular} accounts for 41.7\% of total $|\text{SHAP}|$ mass, followed by \texttt{negative\_emotion} (16.2\%) and \texttt{post\_length} (14.2\%).
+
+\paragraph{Feature ablation.}
+Removing all 7 shortcuts from the 14-feature model drops AUC from 0.709 to 0.645 ($-9.0$\%). Gender-stratified analysis reveals \texttt{fp\_singular} is female-biased (asymmetry = 0.010) and \texttt{post\_length} is male-biased (asymmetry = 0.005).
+
+\subsection{Stage 3: Causal Analysis}
+
+\paragraph{Mediation.}
+The total gender $\to$ label effect is +0.259 on the probability scale (females are $\sim$26 percentage points more likely to receive a positive label). All 7 shortcuts are statistically significant mediators ($p < 0.05$ via bootstrap CI). \texttt{fp\_singular} alone mediates 13.5\% of this effect (ACME = +0.035, 95\% CI [+0.032, +0.038]). The 7 shortcuts combined account for approximately 30\% of the indirect path.
+
+\begin{table}[htbp]
+\centering
+\caption{Causal mediation results (1,000 bootstrap)}
+\label{tab:mediation}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Feature} & \textbf{ACME} & \textbf{95\% CI} & \textbf{Prop.\ med.} & \textbf{Sig.} \\
+\midrule
+\texttt{fp\_singular} & +0.035 & [+0.032, +0.038] & 13.5\% & *** \\
+\texttt{emotional\_feeling} & +0.013 & [+0.012, +0.015] & 5.2\% & *** \\
+\texttt{negative\_emotion} & +0.011 & [+0.009, +0.012] & 4.1\% & *** \\
+\texttt{social\_relational} & +0.008 & [+0.006, +0.009] & 3.0\% & *** \\
+\texttt{post\_length} & +0.007 & [+0.005, +0.008] & 2.6\% & *** \\
+\texttt{hedge\_density} & +0.002 & [+0.001, +0.003] & 0.8\% & *** \\
+\texttt{excl\_intensifiers} & +0.002 & [+0.001, +0.003] & 0.8\% & *** \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{INLP concept erasure.}
+INLP removes up to 15 linear directions per shortcut from the 768-dimensional [CLS] space. Key findings:
+
+\begin{itemize}[leftmargin=*]
+    \item Per-shortcut erasure reduces concept probing AUC by 0.03--0.09 but \textit{never converges} (all hit the 15-iteration cap), indicating shortcut information is encoded redundantly across many dimensions.
+    \item Gender probing AUC changes by $< -0.001$ after any individual shortcut erasure. Even after erasing all 7 shortcuts sequentially (105 directions), gender AUC drops only from 0.959 to 0.955 ($\Delta = -0.004$).
+    \item Label probing AUC changes by $< -0.001$ per shortcut. After all 7 erasures: 0.798 $\to$ 0.787 ($\Delta = -0.012$).
+    \item Direct gender erasure reduces gender AUC by $-0.080$ (0.959 $\to$ 0.879) and label AUC by only $-0.006$.
+\end{itemize}
+
+This reveals a critical asymmetry: shortcut information is a \textit{subset} of the much richer gender signal in [CLS], and the model's label predictions are robust to shortcut removal because gender information flows through many redundant pathways.
+
+\paragraph{Counterfactual prediction flips.}
+Applying the original label classifier to shortcut-erased embeddings produces gender-asymmetric prediction changes:
+
+\begin{table}[htbp]
+\centering
+\caption{Counterfactual prediction flip rates after concept erasure}
+\label{tab:flips}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Erased concept} & \textbf{Overall} & \textbf{Male} & \textbf{Female} & \textbf{Asymmetry} \\
+\midrule
+\texttt{emotional\_feeling} & 9.4\% & 4.7\% & 14.1\% & +9.4\% \\
+\texttt{negative\_emotion} & 8.5\% & 4.4\% & 12.5\% & +8.2\% \\
+\texttt{post\_length} & 6.9\% & 3.6\% & 10.2\% & +6.6\% \\
+All 7 shortcuts & 13.8\% & 6.8\% & 20.7\% & +13.8\% \\
+Gender (direct) & 10.0\% & 5.4\% & 14.6\% & +9.2\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Female predictions are approximately 3$\times$ more likely to flip than male predictions when shortcuts are removed. The combined shortcut erasure (13.8\% overall flip rate) exceeds direct gender erasure (10.0\%), indicating that the shortcut pathway carries \textit{more causal influence on predictions} than the gender signal alone.
+
+\paragraph{Conditional independence.}
+All three likelihood-ratio tests overwhelmingly reject independence ($p \approx 0$):
+
+\begin{enumerate}[leftmargin=*]
+    \item $Y \perp G \mid S_7$: \textbf{Rejected}. Adding gender to 7 shortcuts increases AUC by +0.041 (0.692 $\to$ 0.733).
+    \item $G \perp Y \mid S_7$: \textbf{Rejected}. The label carries gender information beyond shortcuts.
+    \item $Y \perp G \mid X_{14}$: \textbf{Rejected}. Gender adds +0.035 AUC even with all 14 features (0.709 $\to$ 0.744).
+\end{enumerate}
+
+This confirms that the 7 shortcuts (and even all 14 linguistic features) do \textit{not} fully mediate the gender--label association. Gender carries substantial predictive information through unmeasured channels.
+
+% ============================================================================
+\section{Discussion}
+
+\subsection{The Shortcut Landscape}
+
+Our three-stage audit reveals a nuanced picture of shortcut learning in mental health NLP representations. The 7 MI-flagged shortcuts---particularly \texttt{fp\_singular} (first-person singular pronoun density)---are real and statistically significant mediators of the gender$\to$label association, collectively accounting for $\sim$30\% of the indirect effect. They are deeply encoded in pre-trained [CLS] representations (probing AUC 0.83--0.98), confirming that this information is available before any fine-tuning occurs.
+
+However, the causal analysis reveals that these shortcuts are neither necessary nor sufficient for the model's gender-biased behavior:
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Not necessary:} Erasing all 7 shortcuts (105 dimensions) reduces label AUC by only 0.012 and gender AUC by only 0.004. The model retains the ability to predict both.
+    \item \textbf{Not sufficient:} Conditional independence tests show that gender carries additional predictive information beyond these shortcuts. The remaining $\sim$70\% of the indirect effect flows through unmeasured channels---likely vocabulary, topic, discourse structure, and other latent features correlated with gender.
+\end{itemize}
+
+\subsection{Deep Redundancy of Gender Information}
+
+The INLP analysis reveals a striking finding: shortcut information \textit{never converges} to unrecoverable levels within 15 iterations, and erasing 105 directions barely dents gender or label probing accuracy. This indicates that gender-correlated information is distributed across many more than 105 of the 768 embedding dimensions---a form of deep representational redundancy that makes targeted debiasing extremely challenging. Direct gender erasure is more effective ($\Delta_{\text{gender}} = -0.080$) but still leaves gender probing AUC at 0.879, well above chance.
+
+\subsection{Gender-Asymmetric Shortcut Reliance}
+
+The counterfactual analysis provides the most actionable finding: female predictions are approximately 3$\times$ more sensitive to shortcut removal than male predictions (20.7\% vs.\ 6.8\% flip rate for combined erasure). This asymmetry has direct fairness implications---it means that any classifier built on these representations will be disproportionately influenced by shortcut features for female-authored text, potentially leading to higher false-positive rates for women.
+
+\subsection{Implications for Debiasing}
+
+Our findings suggest that feature-level debiasing (removing specific linguistic shortcuts) is \textit{necessary but insufficient}. A comprehensive debiasing strategy must operate at the representation level---for example, adversarial training to prevent gender recovery from [CLS] embeddings, or counterfactual data augmentation that forces consistency across gender-swapped inputs. The conditional independence results further suggest that even perfect shortcut removal would leave substantial gender-mediated prediction differences, indicating that debiasing must also address the deeper distributional differences in how men and women write about mental health.
+
+\subsection{Limitations}
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Single encoder:} We audit DistilRoBERTa-base only. Results may differ for MentalBERT, GPT-4, or other architectures.
+    \item \textbf{Single dataset:} The Mindset corpus represents a specific Reddit population. Cross-dataset generalization remains untested.
+    \item \textbf{Binary gender:} We use self-disclosed male/female labels. Non-binary and non-disclosing populations are not represented.
+    \item \textbf{Frozen representations:} We audit pre-trained [CLS] without fine-tuning. Fine-tuning may amplify or attenuate shortcut reliance.
+    \item \textbf{Linear probing:} We use logistic probes, which may underestimate nonlinear encoding of concepts.
+    \item \textbf{Open lexicons:} Our 14 features are based on curated word lists rather than validated psycholinguistic instruments. Coverage and precision may differ from LIWC-22.
+\end{itemize}
+
+% ============================================================================
+\section{Conclusion}
+
+We present the first systematic shortcut audit of transformer representations for mental health NLP, combining feature engineering, probing classifiers, SHAP attribution, causal mediation, INLP concept erasure, counterfactual analysis, and conditional independence testing into a unified three-stage pipeline.
+
+Our key findings are:
+
+\begin{enumerate}[leftmargin=*]
+    \item Seven gender-correlated linguistic features are identified as shortcut candidates via MI decomposition, with first-person singular pronoun density (\texttt{fp\_singular}) as the most exploitable (40.4\% MI drop, 13.5\% of gender$\to$label mediation).
+
+    \item All shortcuts are deeply encoded in frozen DistilRoBERTa [CLS] representations (probing AUC 0.83--0.98), confirming that shortcut information is pre-baked, not fine-tuning-induced.
+
+    \item Shortcut information is encoded with deep redundancy across embedding dimensions, making targeted erasure ineffective: removing 105 directions changes label AUC by only $-0.012$.
+
+    \item Female predictions are 3$\times$ more sensitive to shortcut removal than male predictions, demonstrating gender-asymmetric shortcut reliance with direct fairness implications.
+
+    \item Gender carries predictive information beyond what shortcuts explain, indicating that debiasing shortcuts alone is necessary but insufficient.
+\end{enumerate}
+
+These findings establish a concrete empirical foundation for representation-level debiasing interventions (adversarial training, counterfactual augmentation) in mental health NLP, which we plan to address in subsequent work.
 
 \newpage
 
-\section*{Key References}
-\addcontentsline{toc}{section}{Key References}
+% ============================================================================
+\section*{References}
+\addcontentsline{toc}{section}{References}
 
-\subsection*{Mental Health NLP Models and Reviews}
-\begin{itemize}
-    \item Ji, S. et al. (2022). MentalBERT: Publicly available pretrained language models for mental healthcare. \textit{LREC}.
-    \item Xu, Z. et al. (2024). Mental-LLM: Leveraging large language models for mental health prediction via online text data. \textit{PMC}.
-    \item Le Glaz, A. et al. (2021). Machine learning and NLP in mental health: Systematic review. \textit{JMIR}.
-    \item Abubakar Abid et al. (2023). NLP for mental health interventions: A systematic review. \textit{Translational Psychiatry}.
-    \item Harrigian, K. et al. (2024). A survey on detecting mental disorders with NLP. \textit{ScienceDirect}.
-\end{itemize}
-
-\subsection*{Bias in Mental Health AI}
-\begin{itemize}
-    \item Straw, I. \& Callison-Burch, C. (2020). Artificial intelligence in mental health and the biases of language models. \textit{PMC}.
-    \item Brandt, M. et al. (2022). A call to action on assessing and mitigating bias in AI for mental health. \textit{PMC}.
-    \item Anon. (2022). The effects of gender bias in word embeddings on depression prediction. \textit{arXiv: 2212.07852}.
-    \item Schuller, B. et al. (2025). Exploring biases in LLMs for multilingual depression detection. \textit{Scientific Reports}.
-\end{itemize}
-
-\subsection*{Shortcut Learning in NLP}
-\begin{itemize}
+\begin{itemize}[leftmargin=*]
+    \item Belinkov, Y. (2022). Probing classifiers: Promises, shortcomings, and advances. \textit{Computational Linguistics}, 48(1).
+    \item Clark, C., Yatskar, M., \& Zettlemoyer, L. (2019). Don't take the easy way out: Ensemble based methods for avoiding known dataset biases. \textit{EMNLP}.
+    \item Clark, C., Yatskar, M., \& Zettlemoyer, L. (2020). Learning to model and ignore dataset bias with mixed capacity ensembles. \textit{EMNLP Findings}.
+    \item Huang, Q., et al. (2023). Less-Learn-Shortcut: Analyzing and mitigating learning of spurious feature-label correlations. \textit{IJCAI}.
+    \item Imai, K., Keele, L., \& Tingley, D. (2010). A general approach to causal mediation analysis. \textit{Psychological Methods}, 15(4).
+    \item Ji, S., et al. (2022). MentalBERT: Publicly available pretrained language models for mental healthcare. \textit{LREC}.
+    \item Lundberg, S. M. \& Lee, S.-I. (2017). A unified approach to interpreting model predictions. \textit{NeurIPS}.
+    \item Ravfogel, S., et al. (2020). Null it out: Guarding protected attributes by iterative nullspace projection. \textit{ACL}.
+    \item Schuller, B., et al. (2025). Exploring biases in LLMs for multilingual depression detection. \textit{Scientific Reports}.
+    \item Straw, I. \& Callison-Burch, C. (2020). Artificial intelligence in mental health and the biases of language models. \textit{JMIR}.
     \item Wang, Z. \& Culotta, A. (2020). Identifying spurious correlations for robust text classification. \textit{EMNLP Findings}.
-    \item Clark, C. et al. (2019, 2020). Don't take the easy way out / Learning to model and ignore dataset bias. \textit{EMNLP/ACL}.
-    \item Huang, Q. et al. (2023). Analyzing and mitigating learning of spurious feature-label correlations (LLS). \textit{IJCAI}.
-    \item Zhou, Y. et al. (2023). Explore spurious correlations at the concept level in LMs. \textit{arXiv: 2311.08648}.
-    \item Tu, L. et al. (2022). Understanding and mitigating spurious correlations in text classification. \textit{EACL}.
-\end{itemize}
-
-\subsection*{Causal and Debiasing Methods}
-\begin{itemize}
-    \item Tian, B. et al. (2022). Debiasing NLU models via causal intervention and counterfactual reasoning. \textit{AAAI}.
-    \item Kaushik, D. et al. (2020). Learning the difference that makes a difference with counterfactually augmented data. \textit{ICLR}.
-    \item Bansal, P. \& Sharma, A. (2023). Controlling learned effects to reduce spurious correlations. \textit{ACL}.
-    \item Pearl, J. (2009/2013). Causality: Models, Reasoning, and Inference.
-\end{itemize}
-
-\subsection*{Explainability Methods}
-\begin{itemize}
-    \item Salih, A. (2025). A perspective on XAI methods: SHAP and LIME. \textit{Advanced Intelligent Systems}.
-    \item Sundararajan, M. et al. (2017). Axiomatic attribution for deep networks (Integrated Gradients). \textit{ICML}.
-    \item Guidotti, R. et al. (2022). Counterfactuals and causability in XAI. \textit{ScienceDirect}.
-\end{itemize}
-
-\subsection*{Gender Bias in NLP}
-\begin{itemize}
-    \item Bentivogli, L. et al. (2021). Gender bias in machine translation. \textit{TACL}.
-    \item Hovy, D. \& Søgaard, A. (2015). Tagging performance on social media text. \textit{ACL}.
-    \item Hovy, D. (2021). Five sources of bias in natural language processing. \textit{PMC}.
+    \item Xu, Z., et al. (2024). Mental-LLM: Leveraging large language models for mental health prediction. \textit{PNAS}.
 \end{itemize}
 
 \end{document}
