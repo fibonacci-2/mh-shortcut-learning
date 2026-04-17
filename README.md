@@ -214,3 +214,110 @@ G-AUDIT includes a **synthetic calibration** step: inject a fully-detectable syn
 | **Statistical assumptions** | Chance-adjusted MI | Standard binned MI (sufficient for low-cardinality) |
 
 **Bottom line:** G-AUDIT is a broader, more portable *screening tool* — it efficiently ranks many attributes across modalities but stops at "this attribute is risky." Your MI decomposition is a *deeper diagnostic* — it directly isolates the confounding mechanism ($I(f;Y) - I(f;Y|G)$) and then follows through with encoding analysis, attribution, ablation, and OOD validation. For a focused study on gender shortcuts in mental health NLP, your approach is **more methodologically rigorous** because it answers the causal question directly rather than flagging correlations that require human interpretation. G-AUDIT would be the better choice for a quick first-pass audit across dozens of attributes before you know which ones matter.
+
+
+
+# Proof of MI math
+In Cover & Thomas (2006), look at:
+
+- **Chapter 2, Section 2.5 — "Chain Rules"** — This gives the chain rule for mutual information and the identity $I(X;Y|Z) = H(X|Z) - H(X|Y,Z)$, which is the foundation for your stratified conditional MI.
+
+- **Theorem 2.5.2** — The **chain rule for MI**: $I(X_1, X_2, \ldots, X_n ; Y) = \sum_i I(X_i ; Y \mid X_1, \ldots, X_{i-1})$. Your decomposition is the simplest case: $I(f; Y) = I(f; Y | G) + I(f; Y; G)$ (the interaction information triangle).
+
+- **Section 2.4, eq. 2.40–2.42** — Defines conditional MI: $I(X;Y|Z) = \sum_z p(z) \, I(X;Y)_{Z=z}$, which is *exactly* your stratification formula: $I(f; Y \mid G) = \sum_g P(G{=}g) \cdot I(f; Y)_{G=g}$.
+
+The specific equation you're implementing is **eq. 2.42**:
+
+$$I(X;Y|Z) = \sum_{z \in \mathcal{Z}} p(z) \sum_{x,y} p(x,y|z) \log \frac{p(x,y|z)}{p(x|z)\,p(y|z)}$$
+
+which you approximate by computing $I(f;Y)$ separately within each gender stratum and taking the weighted average. That's a direct Monte Carlo version of 2.42.
+
+For the citation in your paper, I'd write:
+
+> *following the chain rule for mutual information (Cover and Thomas, 2006, §2.5, Theorem 2.5.2)*
+
+or more specifically:
+
+> *The conditional MI $I(f; Y \mid G) = \sum_g P(G{=}g)\, I(f; Y)_{G=g}$ follows from the definition of conditional mutual information (Cover and Thomas, 2006, eq.\ 2.42).*
+
+
+# worked example
+## Detailed Walkthrough of Conditional MI in Your Pipeline
+
+### The Formula
+
+The conditional mutual information is defined as:
+
+$$I(X; Y \mid Z) = \sum_{z \in \mathcal{Z}} p(z) \; I(X; Y \mid Z = z)$$
+
+which expands to:
+
+$$I(X; Y \mid Z) = \sum_{z \in \mathcal{Z}} p(z) \sum_{x, y} p(x, y \mid z) \log \frac{p(x, y \mid z)}{p(x \mid z)\, p(y \mid z)}$$
+
+### Variable Mapping
+
+In your pipeline, the three random variables are:
+
+| Symbol | What it is | Values | Example |
+|--------|-----------|--------|---------|
+| $X$ (= $f$) | A linguistic feature | Continuous (e.g., 0.0–0.15) | `fp_singular` = proportion of first-person singular pronouns |
+| $Y$ | The clinical label | Binary: {0, 1} | 0 = control, 1 = autism |
+| $Z$ (= $G$) | Gender | Binary: {0, 1} | 0 = male, 1 = female |
+
+So you're computing $I(f;\; Y \mid G)$ — **how much the feature tells you about the clinical label, after you already know gender**.
+
+---
+
+### What Each Probability Term Means
+
+**$p(z)$** — the marginal probability of each gender stratum:
+- $p(G = 0)$ = fraction of males in the dataset (e.g., 0.62)
+- $p(G = 1)$ = fraction of females (e.g., 0.38)
+
+In your code this is `mask.mean()`:
+
+
+
+**$p(x, y \mid z)$** — the joint distribution of (feature value, label) *within one gender group*. For example, $p(\texttt{fp\_singular} = 0.12,\; Y = 1 \mid G = \text{female})$ is: "among females, how likely is it to see this particular pronoun rate *and* be in the autism class?" Since $X$ is continuous, KNN MI estimation handles this implicitly — you never compute this density explicitly; `mutual_info_classif` estimates it via $k$-nearest-neighbor distances (Kraskov et al., 2004).
+
+**$p(x \mid z)$** — the marginal distribution of the feature within one gender group. E.g., "among males, what's the distribution of `fp_singular`?" This captures the fact that females tend to use more first-person singular pronouns than males.
+
+**$p(y \mid z)$** — the marginal distribution of the label within one gender group. E.g., "among females, what fraction are autism vs control?" Because you class-balance *before* gender-splitting, this is close to 50/50 in each stratum, but not exactly (since gender isn't balanced within each class).
+
+**$\frac{p(x, y \mid z)}{p(x \mid z)\, p(y \mid z)}$** — the key ratio. If, *within females*, knowing `fp_singular = 0.12` tells you nothing new about whether $Y = \text{autism}$ beyond what you'd guess from base rates, then $p(x, y \mid z) = p(x \mid z) \cdot p(y \mid z)$ and the log ratio is 0 (no MI). If the feature *is* informative about the label even after restricting to one gender, the ratio departs from 1 and contributes positive MI.
+
+---
+
+### Why This Works for Shortcut Detection
+
+The logic is a **subtraction argument**:
+
+1. **$I(f; Y)$** — total MI. How much does `fp_singular` predict autism *overall*? This includes both:
+   - genuine clinical signal (depressed/autistic people use more "I"), AND
+   - gender-mediated signal (females use more "I" AND females are overrepresented in certain conditions)
+
+2. **$I(f; Y \mid G)$** — conditional MI. How much does `fp_singular` predict autism *once you already know the person's gender*? This removes the gender-mediated pathway because within each gender stratum, everyone is the same gender, so gender can't act as a confounder.
+
+3. **MI drop = $I(f; Y) - I(f; Y \mid G)$**:
+   - **Large positive drop** → a big chunk of the feature's predictive power came *through* gender. The feature is a **gender shortcut**: a model could exploit $f \to G \to Y$ rather than $f \to Y$ directly.
+   - **Near zero or negative** → the feature's predictive power is **robust to gender conditioning**. It carries genuine clinical signal.
+
+Concretely for `fp_singular`:
+- $I(\texttt{fp\_singular}; Y) = 0.025$ (it predicts the label)
+- $I(\texttt{fp\_singular}; G) = 0.018$ (it's also gender-correlated)
+- $I(\texttt{fp\_singular}; Y \mid G) = 0.008$ (within each gender, it's much less predictive)
+- MI drop = 0.017 (68% of its "clinical" signal was actually gender-mediated)
+- → **Shortcut flag raised** in 7/7 conditions
+
+Versus `clout`:
+- $I(\texttt{clout}; Y)$ is moderate
+- $I(\texttt{clout}; G)$ is moderate (gendered feature)
+- $I(\texttt{clout}; Y \mid G)$ stays roughly the same → MI drop ≈ 0
+- → Even though clout is gendered, its clinical signal is **genuine** (it predicts the label for reasons independent of gender) → **Not flagged** in 0/7 conditions
+
+---
+
+### Why Stratification = Conditioning
+
+The sum $\sum_z p(z) \, I(X; Y \mid Z = z)$ literally says: "compute MI separately within each gender group, then take the weighted average." Your code does exactly this:
+
