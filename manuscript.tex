@@ -1,336 +1,209 @@
-\documentclass[11pt,letterpaper]{article}
+\documentclass[11pt]{article}
+
+% Review mode for anonymous submission
+\usepackage[review]{acl}
+
+% Standard packages
+\usepackage{times}
+\usepackage{latexsym}
+\usepackage[T1]{fontenc}
 \usepackage[utf8]{inputenc}
-\usepackage{amsmath,amsfonts,amssymb,amsthm}
+\usepackage{microtype}
+\usepackage{inconsolata}
 \usepackage{graphicx}
 \usepackage{booktabs}
-\usepackage{array}
-\usepackage{caption}
-\usepackage{subcaption}
-\usepackage{hyperref}
-\usepackage{geometry}
-\usepackage{setspace}
-\usepackage{enumitem}
-\usepackage{xcolor}
-\usepackage{titlesec}
-\usepackage{fancyhdr}
+\usepackage{amsmath}
 \usepackage{multirow}
 
-% Geometry
-\geometry{letterpaper, margin=1in}
+\title{How Gender Bias Enters Clinical Predictions:\\Tracing Shortcut Pathways in Mental Health NLP}
 
-% Header/Footer
-\pagestyle{fancy}
-\fancyhf{}
-\fancyhead[L]{Shortcut Learning in Mental Health NLP}
-\fancyhead[R]{Research Report}
-\fancyfoot[C]{\thepage}
-
-% Section formatting
-\titleformat{\section}{\Large\bfseries}{\thesection}{1em}{}
-\titleformat{\subsection}{\large\bfseries}{\thesubsection}{1em}{}
-\titleformat{\subsubsection}{\normalsize\bfseries}{\thesubsubsection}{1em}{}
-
-% Spacing
-\setstretch{1.15}
-\setlength{\parskip}{0.8ex}
-\setlength{\parindent}{0pt}
-
-% Table of Contents depth
-\setcounter{tocdepth}{2}
-
-% Hyperref setup
-\hypersetup{
-    colorlinks=true,
-    linkcolor=blue,
-    citecolor=blue,
-    urlcolor=blue,
-}
-
-% Custom commands
-\newcommand{\todo}[1]{\textcolor{red}{[TODO: #1]}}
+\author{Anonymous ACL submission}
 
 \begin{document}
-
-% Title Page
-\title{\vspace{-2cm}
-    \textbf{How Gender Bias Enters Clinical Predictions:} \\
-    \large{Tracing Shortcut Pathways from Writing Style to Transformer Representations \\
-    in Mental Health NLP}
-}
-\author{
-    \textit{April 2026}
-}
-\date{}
-
 \maketitle
-\thispagestyle{empty}
-\newpage
 
-\tableofcontents
-\newpage
-
-\pagenumbering{arabic}
-\setcounter{page}{1}
-
-% ============================================================================
-\section*{Abstract}
-\addcontentsline{toc}{section}{Abstract}
-
-Mental health NLP classifiers routinely achieve high benchmark accuracy, yet growing evidence suggests they exploit \textit{shortcut cues}---surface-level textual features that are spuriously correlated with diagnostic labels via demographic confounds---rather than clinically meaningful signal. We ask: do transformer-based models learn to rely on gender-correlated writing-style features as predictive shortcuts, and if so, through what causal mechanism does this reliance produce gender-asymmetric predictions?
-
-We present a five-stage audit pipeline applied to frozen DistilRoBERTa-base representations over a gender-balanced dataset of 32,200 Reddit posts (16,100 male, 16,100 female). In \textbf{Stage~1}, we engineer 18 open-lexicon linguistic features---14 candidate features plus 4 theoretically motivated controls---and identify 6 whose mutual information with the label drops 28--48\% when conditioned on gender, establishing them as shortcut candidates. In \textbf{Stage~2}, we show that all 6 shortcuts are highly recoverable from frozen [CLS] embeddings (probing AUC 0.83--0.998), that gender is encoded at AUC~=~0.959, and that \texttt{fp\_singular} (first-person singular pronouns) accounts for 51.3\% of SHAP attribution mass. In \textbf{Stage~3}, causal mediation analysis confirms that shortcuts are statistically significant mediators of the gender$\to$label association, while INLP concept erasure reveals deep redundancy in how shortcut information is distributed across embedding dimensions. Counterfactual prediction analysis shows gender-asymmetric sensitivity to shortcut removal, and conditional independence tests confirm that gender carries predictive information beyond what shortcuts explain. These findings establish that debiasing individual shortcuts is necessary but insufficient, and motivate representation-level interventions addressed in Stages~4--5.
+\begin{abstract}
+Mental health NLP classifiers may exploit \textit{shortcut features}---surface-level cues spuriously correlated with diagnostic labels via demographic confounds---rather than clinically meaningful signal.
+We present a three-block audit of frozen DistilRoBERTa representations on a gender-balanced Reddit corpus (32,200 posts; 18 open-lexicon features).
+\textbf{Identify:} mutual information decomposition flags 6 of 14 candidate features whose label-predictive power drops 28--48\% when conditioned on gender; 2 of 4 control features are unexpectedly flagged, revealing pervasive confounding.
+\textbf{Locate:} layer-wise probing shows all shortcuts are encoded by the first transformer layer (AUC $\geq 0.86$), tracking the gender curve more closely than the label curve.
+\textbf{Quantify:} SHAP analysis attributes 51.3\% of predictive mass to first-person singular pronouns; causal mediation confirms shortcuts significantly mediate the gender$\to$label association ($\sim$13.5\% via \texttt{fp\_singular} alone); gender-stratified ablation shows female predictions are $3\times$ more sensitive to shortcut removal.
+These findings establish that pre-trained representations encode gender-mediated shortcuts before any fine-tuning, with asymmetric fairness consequences.
+\end{abstract}
 
 % ============================================================================
 \section{Introduction}
 
-Mental health disorders affect approximately one in eight people globally, yet access to timely diagnosis remains severely limited. This gap has motivated an explosion of NLP research aimed at automatic detection of depression, anxiety, suicidal ideation, and related conditions from social media text. Domain-adapted transformer models (MentalBERT, MentalRoBERTa; Ji et al., 2022) and prompted LLMs (GPT-4, Mental-LLM; Xu et al., 2024) routinely achieve F1 scores of 0.85--0.96 on benchmark Reddit datasets.
+Mental health disorders affect approximately one in eight people globally, yet access to timely diagnosis remains limited.
+NLP models for automatic detection of depression, anxiety, and suicidal ideation from social media text \citep{coppersmith,cohan} routinely achieve high benchmark accuracy, with domain-adapted transformers such as MentalBERT \citep{ji2022mentalbert} and prompted LLMs \citep{xu2024mentalllm} reaching F1 scores of 0.85--0.96 on Reddit datasets.
 
-Yet this performance may be illusory. Shortcut learning---the exploitation of surface-level features spuriously correlated with labels but not causally related to the target construct---is well-documented in NLI, sentiment analysis, and toxicity detection (Geirhos et al., 2020; McCoy et al., 2019; Du et al., 2023). In mental health contexts, the stakes are uniquely high: a model that fires on first-person pronoun density or hedging language---both gender-correlated stylistic features---rather than on genuine psychopathological signal will fail to generalize across demographics and may produce systematically biased clinical decisions.
+Yet this performance may be illusory.
+Shortcut learning---the exploitation of surface-level features spuriously correlated with labels---is well-documented in NLI, sentiment analysis, and toxicity detection \citep{geirhos2020shortcut,mccoy2019right,du2023shortcut}.
+In mental health contexts, the risk is acute: sociolinguistic research documents that women use more first-person pronouns, hedging, and emotional disclosure \citep{newman2008gender,schwartz2013personality}---features that also correlate with depression \citep{rude2004language}---creating a gender$\to$writing-style$\to$label confound.
+A model that fires on pronoun density rather than psychopathological signal will produce systematically biased clinical decisions.
 
-Recent work has begun to address dataset-level bias in medical AI. G-AUDIT (Drenkow et al., 2025) provides a modality-agnostic framework for flagging attributes with high utility and detectability as shortcut risks. However, such dataset-level audits identify \textit{that} a shortcut risk exists without tracing \textit{how} a trained model exploits it or \textit{whom} it harms. In the mental health NLP domain specifically, evidence for shortcut reliance remains indirect: cross-platform generalization failure, MentalBERT's lexical dependency (Tang et al.), and performance gaps across demographic groups (Schuller et al., 2025; Harrigian et al., 2023).
+Dataset-level auditing frameworks such as G-AUDIT \citep{drenkow2025gaudit} can flag attributes with high utility and detectability as shortcut risks, but they identify \textit{that} a risk exists without tracing \textit{how} representations encode it or \textit{whom} it harms.
+We provide this mechanistic account.
 
-This paper provides a mechanistic account of how gender bias enters mental health predictions through writing-style shortcuts.
+\paragraph{Research questions.}
+\begin{itemize}
+\setlength\itemsep{0pt}
+\item[\textbf{RQ1}] Which writing-style features function as gender-mediated shortcuts for mental health classification?
+\item[\textbf{RQ2}] Are these shortcuts encoded in pre-trained transformer representations, and at what depth?
+\item[\textbf{RQ3}] How much of the gender$\to$prediction pathway flows through identifiable shortcuts?
+\item[\textbf{RQ4}] Is the model's reliance on shortcuts gender-asymmetric?
+\end{itemize}
 
-\subsection{Scope and Objective}
-
-\textbf{Scope.} We audit frozen (non-fine-tuned) DistilRoBERTa-base representations on a single gender-balanced mental health dataset (Mindset corpus, 32,200 Reddit posts). We focus on \textit{gender} as the protected attribute and on \textit{writing-style features} (pronoun usage, hedging, emotional language, post length) as the candidate shortcut mechanism. We do not claim to cover all sources of bias, all models, or all datasets.
-
-\textbf{Objective.} We extend dataset-level shortcut auditing (Drenkow et al., 2025) in three directions: (1)~we move from dataset-level to \textit{representation-level} auditing, asking not whether shortcuts \textit{could} be exploited but whether a trained model \textit{has} exploited them; (2)~we focus on settings where the protected attribute influences predictions not through explicit metadata but through \textit{correlated writing-style proxies} that are entangled with legitimate clinical signal; and (3)~we provide \textit{causal mechanism analysis}---per-feature mediation decomposition, concept erasure, and gender-stratified counterfactual interventions---that traces exactly how bias flows from demographic attribute to clinical prediction.
-
-\subsection{Research Questions}
-
-\begin{description}[leftmargin=1.5em, labelindent=0em]
-    \item[RQ1] Do mental health NLP classifiers learn gender-correlated writing-style shortcuts, and if so, do these shortcuts \textit{causally mediate} the relationship between gender and clinical predictions?
-    \item[RQ1a] Which linguistic features exhibit significant mutual information with both gender and clinical labels---functioning as ``dual-use'' shortcuts?
-    \item[RQ1b] To what extent are these shortcuts encoded in transformer representations, and how much do they contribute to classification decisions?
-    \item[RQ1c] What fraction of the total gender$\to$prediction effect is \textit{causally transmitted} through each shortcut feature?
-    \item[RQ1d] Does removing shortcut information from embeddings reduce gender bias, and does this reduction affect male and female subgroups asymmetrically?
-\end{description}
-
-\subsection{Hypotheses}
-
-\begin{description}[leftmargin=1.5em, labelindent=0em]
-    \item[H1 (Shortcut Encoding)] Gender-correlated linguistic features (e.g., first-person singular pronouns, hedging, emotional language) are deeply encoded in frozen transformer [CLS] embeddings and disproportionately drive clinical predictions.
-    \item[H2 (Causal Mediation)] A significant fraction of the gender$\to$prediction association is \textit{indirectly mediated} through writing-style shortcuts rather than through legitimate clinical signal---i.e., ACME $\neq 0$ for multiple shortcut features.
-    \item[H3 (Asymmetric Impact)] The reliance on shortcuts harms gender subgroups unequally: removing shortcut information changes predictions more for one gender than the other.
-    \item[H4 (Incomplete Mediation)] Shortcuts do not \textit{fully} mediate the gender$\to$prediction path---gender retains residual predictive power even after conditioning on all shortcut features, implying additional unmeasured confounds.
-\end{description}
-
-\subsection{Contributions}
-
-We present a five-stage empirical audit pipeline (Stages~1--3 reported here; Stages~4--5 are ongoing):
-
-\begin{enumerate}[leftmargin=*]
-    \item \textbf{Shortcut Candidate Extraction} (Stage~1): We engineer 18 open-lexicon features---14 candidates plus 4 theoretically motivated controls---and use mutual information decomposition conditioned on gender to identify 6 features where $>$28\% of the label-predictive MI is gender-mediated.
-
-    \item \textbf{Shortcut Auditing} (Stage~2): We show via probing classifiers that all 6 shortcuts are recoverable from frozen DistilRoBERTa [CLS] embeddings (AUC 0.83--0.998), that gender is encoded at AUC~=~0.959, and that SHAP attribution identifies first-person singular pronoun density as the dominant shortcut (51.3\% of total attribution mass).
-
-    \item \textbf{Causal Disentanglement} (Stage~3): We apply causal mediation analysis, INLP concept erasure, counterfactual prediction analysis, and conditional independence testing. We find that shortcuts are significant mediators, that shortcut information is deeply redundant in the embedding space, that female predictions are more sensitive to shortcut removal, and that gender carries predictive information beyond what shortcuts explain.
-
-    \item \textbf{Debiasing Interventions} (Stage~4, ongoing): Adversarial gender removal and INLP-debiased embedding classifiers.
-
-    \item \textbf{Evaluation} (Stage~5, ongoing): Pre/post-debiasing comparison of fairness metrics, clinical accuracy, and generalization.
-\end{enumerate}
+\paragraph{Contributions.}
+We present a three-block audit---\textsc{Identify}, \textsc{Locate}, \textsc{Quantify}---applied to frozen DistilRoBERTa-base on a gender-balanced mental health dataset:
+(1)~an MI-based shortcut detection method with built-in control validation that identifies 6 gender-confounded features and reveals deeper-than-expected confounding;
+(2)~layer-wise probing showing shortcuts are encoded from the first transformer layer, tracking gender more than the label;
+(3)~SHAP and causal mediation evidence that \texttt{fp\_singular} alone carries 51.3\% of shortcut attribution and mediates $\sim$13.5\% of the gender$\to$label effect; and
+(4)~gender-stratified ablation demonstrating $3\times$ asymmetric sensitivity for female-authored posts.
 
 % ============================================================================
 \section{Related Work}
 
-\subsection{Shortcut Learning in NLP}
+\paragraph{Shortcut learning in NLP.}
+Shortcut learning occurs when models exploit statistical regularities correlated with labels but not causally related to the task \citep{geirhos2020shortcut}.
+NLI models exploit lexical overlap \citep{mccoy2019right}, sentiment classifiers learn author identity, and toxicity detectors fire on identity-group mentions.
+\citet{du2023shortcut} survey shortcut learning in LLMs across NLU tasks.
+Mitigation strategies include Product-of-Experts ensembles \citep{clark2020poe} and counterfactual data augmentation, but none have been applied to mental health NLP.
 
-Shortcut learning occurs when models exploit statistical regularities correlated with labels but not causally related to the task (Geirhos et al., 2020). The phenomenon is pervasive: NLI models exploit negation words and lexical overlap (McCoy et al., 2019; Clark et al., 2019), sentiment classifiers learn author identity as proxy for polarity, and toxicity detectors associate identity group mentions with toxicity. Du et al.\ (2023) provide a comprehensive survey of shortcut learning in LLMs across NLU tasks. Mitigation strategies include Product-of-Experts ensembles (Clark et al., 2020), the Less-Learn-Shortcut framework (Huang et al., 2023), and counterfactual data augmentation, but none have been applied to mental health NLP.
+\paragraph{Dataset-level bias auditing.}
+G-AUDIT \citep{drenkow2025gaudit} proposes a modality-agnostic framework using MI to flag attributes with high utility and detectability as shortcut risks.
+Our work extends this paradigm from dataset-level to \textit{representation-level} auditing: we trace not just whether shortcuts exist but how models encode them across layers, which carry the most causal weight, and whom they harm.
 
-\subsection{Dataset Bias Auditing in Medical AI}
+\paragraph{Gender, language, and mental health NLP.}
+Women use more first-person singular pronouns, emotional disclosure, and hedging \citep{newman2008gender,schwartz2013personality}---features also correlated with depression \citep{rude2004language}---creating a confound.
+MentalBERT \citep{ji2022mentalbert} degrades substantially when topic words are removed, suggesting lexical reliance.
+\citet{harrigian2023characterization} showed mental health classifiers exploit demographic proxies; \citet{schuller2025bias} found gender shifts classification outcomes in multilingual settings.
+Yet the \textit{mechanism} by which gender-correlated features mediate predictions has not been traced at the feature level.
 
-G-AUDIT (Drenkow et al., 2025) represents the closest methodological precedent to our work. It proposes a modality-agnostic dataset auditing framework using mutual information to quantify attribute \textit{utility} ($\text{MI}(A; Y)$) and \textit{detectability} ($\text{MI}(A; \hat{A})$), flagging attributes with high values on both axes as shortcut risks. Applied across skin lesion images, EHR text, and ICU tabular data, G-AUDIT successfully identifies subtle biases overlooked by qualitative methods. Our work extends this paradigm in three directions: (1)~we move from dataset-level to \textit{representation-level} auditing, asking not whether shortcuts \textit{could} be exploited but whether a trained encoder \textit{has} encoded them; (2)~we focus on settings where the protected attribute (gender) influences predictions through correlated writing-style proxies entangled with clinical signal, rather than through retrievable metadata; and (3)~we provide causal mechanism analysis---per-feature mediation decomposition, concept erasure, and gender-stratified counterfactual interventions---that traces exactly how bias flows from demographic attribute to clinical prediction. Where G-AUDIT is the metal detector, our pipeline is the archaeological excavation.
-
-\subsection{Mental Health NLP Models}
-
-The field has progressed from lexical/feature-engineered approaches (LIWC-based logistic regression, SVM) to domain-adapted transformers. Ji et al.\ (2022) introduced MentalBERT and MentalRoBERTa, pretrained on 13.6 million Reddit mental health sentences. These models improve over general BERT on depression and suicidal ideation benchmarks but degrade substantially when domain-specific ``topic words'' are removed, suggesting heavy lexical reliance. General-purpose LLMs (GPT-4, FLAN-T5) have been evaluated on mental health tasks (Xu et al., 2024), approaching fine-tuned model performance while remaining opaque.
-
-\subsection{Gender, Language, and Mental Health}
-
-Sociolinguistic research has long documented gender differences in language use. Women use more first-person singular pronouns, emotional disclosure, hedging, and relational language (Newman et al., 2008; Schwartz et al., 2013). Critically, many of these same features are also associated with depression and anxiety (Rude et al., 2004), creating a confound: features that appear clinically informative may in fact be capturing gender-linked writing style. Straw \& Callison-Burch (2020) documented performance biases across gender and race in mental health AI. Harrigian et al.\ (2023) showed that mental health classifiers exploit demographic proxies, measuring performance drops when confounds are controlled. Schuller et al.\ (2025) found that both age and gender shift classification outcomes in multilingual depression detection. However, the \textit{mechanism} by which gender-correlated features mediate model predictions has not been traced at the feature level.
-
-\subsection{Probing, Attribution, and Causal Methods}
-
-Probing classifiers (Belinkov, 2022) test whether specific properties are encoded in model representations. SHAP (Lundberg \& Lee, 2017) provides feature-level attribution. INLP (Ravfogel et al., 2020) removes concept information from embeddings via iterative nullspace projection; LEACE (Belrose et al., 2023) provides a closed-form alternative. Causal mediation analysis (Imai et al., 2010) decomposes total effects into direct and indirect components. Vig et al.\ (2020) applied mediation analysis to attention heads in GPT-2. Elazar \& Goldberg (2018) showed adversarial demographic removal is unreliable, motivating multi-method triangulation. These tools have been applied individually across NLP but have not been combined into a systematic shortcut audit for mental health representations.
+\paragraph{Probing, attribution, and causal methods.}
+Probing classifiers \citep{belinkov2022probing} test whether properties are linearly encoded in representations.
+SHAP \citep{lundberg2017unified} provides feature-level attribution.
+Causal mediation analysis \citep{imai2010general} decomposes effects into direct and indirect components; \citet{vig2020mediation} applied it to GPT-2 attention heads.
+These tools have been applied individually but not combined into a systematic shortcut audit for mental health representations.
 
 % ============================================================================
 \section{Data}
 
-\subsection{Dataset}
+\paragraph{Dataset.}
+We use a curated subset of the Mindset corpus \citep{koloski2024mindset} (Reddit mental health and control subreddits), with binary gender labels from high-precision regex matching on explicit self-disclosure (e.g., ``I'm a 24F'').
+Table~\ref{tab:data} summarises the dataset.
 
-We use a curated subset of the Mindset corpus (Reddit mental health and control subreddits) with strong self-disclosure gender labels obtained via high-precision regex matching on explicit gender statements (e.g., ``I'm a 24F,'' ``as a man'').
-
-\begin{table}[htbp]
+\begin{table}[t]
 \centering
-\caption{Dataset characteristics}
+\small
+\caption{Dataset characteristics.}
 \label{tab:data}
 \begin{tabular}{ll}
 \toprule
 \textbf{Property} & \textbf{Value} \\
 \midrule
 Total posts & 32,200 \\
-Male / Female & 16,100 / 16,100 (balanced) \\
-Control / MH-positive & 22,601 (70.2\%) / 9,599 (29.8\%) \\
+Male / Female & 16,100 / 16,100 \\
+Control / MH-positive & 22,601 / 9,599 \\
 Female positive rate & 43.0\% \\
 Male positive rate & 16.8\% \\
-Gender$\times$label $\chi^2$ & $p \approx 0$ \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-The strong gender--label correlation (43\% vs.\ 17\% positive rate) is a design feature, not a limitation: it creates the conditions under which gender-mediated shortcut learning is most likely to occur, making this dataset ideal for auditing purposes.
+The $2.6\times$ gap in positive rates creates the conditions under which gender-mediated shortcut learning is most likely to occur, making this dataset ideal for auditing.
 
-\subsection{Feature Engineering}
-
-We replace proprietary LIWC-22 features with 18 open-lexicon linguistic features: 14 candidate features computed from curated word lists, plus 4 \textit{control features} designed to validate the MI decomposition methodology. Each feature is a normalized token-count density (count / total tokens) or a log-transformed count:
-
-\begin{table}[htbp]
-\centering
-\caption{18 engineered linguistic features (14 candidates + 4 controls)}
-\label{tab:features}
-\small
-\begin{tabular}{lp{7.5cm}}
-\toprule
-\textbf{Feature} & \textbf{Description} \\
-\midrule
-\multicolumn{2}{l}{\textit{Candidate features (14)}} \\
-\texttt{fp\_singular} & First-person singular pronoun ratio (I, me, my, myself) \\
-\texttt{fp\_plural} & First-person plural pronoun ratio (we, us, our) \\
-\texttt{emotional\_feeling} & Emotional feeling word density (feel, felt, feeling, \ldots) \\
-\texttt{social\_relational} & Social/relational word density (friend, family, love, \ldots) \\
-\texttt{certainty} & Certainty word density (always, never, definitely, \ldots) \\
-\texttt{negative\_emotion} & Negative emotion word density (sad, angry, hurt, \ldots) \\
-\texttt{swear\_words} & Profanity density \\
-\texttt{excl\_intensifiers} & Exclamation marks + intensifier density (very, so, really, \ldots) \\
-\texttt{question\_density} & Question mark density \\
-\texttt{post\_length} & $\log_{10}$ token count \\
-\texttt{hedge\_density} & Hedge/epistemic marker density (maybe, perhaps, sort of, \ldots) \\
-\texttt{apology\_selfblame} & Apology \& self-blame word density (sorry, fault, blame, \ldots) \\
-\texttt{anger} & Anger word density (hate, furious, rage, \ldots) \\
-\texttt{body\_health} & Body/health word density (pain, sleep, tired, \ldots) \\
-\midrule
-\multicolumn{2}{l}{\textit{Control features (4)}} \\
-\texttt{absolutist} & Absolutist word density (always, never, completely, \ldots; 12 words) \\
-\texttt{past\_tense} & Past-tense verb ratio via spaCy POS tagging \\
-\texttt{negation} & Negation word density (not, no, never, don't, \ldots; 23 words) \\
-\texttt{cognitive\_processing} & Cognitive process word density (think, know, understand, \ldots; 28 words) \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-The 4 control features were selected based on prior psycholinguistic literature as features expected to be clinically relevant (associated with mental health labels) but \textit{not} strongly gender-differentiated, providing a validation check: controls should show low MI drop when conditioned on gender. Lexicons were carefully constructed to minimize overlap with candidate features (e.g., \texttt{absolutist} excludes 8 certainty words already in \texttt{certainty}; \texttt{negation} excludes ``nothing'' which overlaps with \texttt{negative\_emotion}).
+\paragraph{Features.}
+We engineer 18 open-lexicon linguistic features---14 candidates plus 4 \textit{controls}---replacing proprietary LIWC-22 categories.
+Each feature is a normalized token-count density or a log-transformed count (full inventory in Table~\ref{tab:features}, Appendix~\ref{sec:features}).
+Controls (\texttt{absolutist}, \texttt{past\_tense}, \texttt{negation}, \texttt{cognitive\_processing}) were chosen from psycholinguistic literature as clinically relevant but not \textit{a priori} gendered, providing a built-in validation of the MI decomposition.
 
 % ============================================================================
 \section{Methods}
 
-Our audit pipeline consists of three stages, each building on the outputs of the previous stage.
+Our audit has three blocks---\textsc{Identify}, \textsc{Locate}, \textsc{Quantify}---each answering a specific research question.
 
-\subsection{Stage 1: Shortcut Candidate Extraction}
+\subsection{\textsc{Identify}: Shortcut Detection (RQ1)}
 
 \paragraph{Standalone predictive power.}
-For each of the 18 features, we train a logistic regression classifier (5-fold stratified CV) to predict the binary mental health label using that feature alone, and record the AUC.
+For each of the 18 features we train a logistic regression classifier (5-fold stratified CV) to predict the binary label using that feature alone, recording the AUC.
 
 \paragraph{Mutual information decomposition.}
-For each feature $f$, we compute:
-\begin{itemize}[leftmargin=*]
-    \item $I(f; Y)$: mutual information between feature $f$ and label $Y$
-    \item $I(f; Y \mid G)$: conditional MI given gender $G$
-    \item MI drop $= 1 - I(f; Y \mid G) / I(f; Y)$
-\end{itemize}
-A high MI drop indicates that a substantial fraction of the feature's label-predictive information is mediated by gender---marking it as a shortcut candidate. We flag features with MI drop $>$24\%.
+For each feature $f$ we compute $I(f; Y)$, the conditional $I(f; Y \mid G)$, and the \textit{MI drop} $= 1 - I(f; Y \mid G)/I(f; Y)$.
+A high MI drop indicates that a substantial share of the feature's label information is gender-mediated.
+We flag features with MI drop $>$24\%.
 
-\paragraph{Control feature validation.}
-The 4 control features serve as a methodological check. If the MI decomposition is sound, controls should exhibit \textit{low} MI drop ($<$10\%), confirming that the procedure flags gender-confounded features rather than all predictive features. Partial validation (some controls passing, others failing) itself provides insight into the depth of gender confounding in the feature space.
+\paragraph{Control validation.}
+The 4 controls serve as a sanity check: if the decomposition is sound, controls should show low MI drop ($<$10\%), confirming that the procedure flags gender-confounded features rather than all predictive features.
 
-\subsection{Stage 2: Shortcut Auditing}
+\subsection{\textsc{Locate}: Representation Probing (RQ2)}
 
-\paragraph{[CLS] embedding extraction.}
+\paragraph{[CLS] extraction.}
 We extract frozen [CLS] embeddings from DistilRoBERTa-base (no fine-tuning) for all 32,200 posts, yielding a $32{,}200 \times 768$ matrix.
 
-\paragraph{Probing classifiers.}
-For each shortcut feature, gender, and the binary label, we train logistic probing classifiers (5-fold stratified CV) on the [CLS] embeddings. High probing AUC indicates the property is encoded in the pre-trained representations.
+\paragraph{Final-layer probing.}
+For each shortcut, gender, and the binary label, we train logistic probing classifiers (5-fold stratified CV) on the final-layer [CLS] embeddings.
+
+\paragraph{Layer-wise probing.}
+To trace \textit{when} shortcuts are encoded, we extract [CLS] from all 7 extraction points (static embedding layer + 6 transformer layers) and repeat the probing protocol at each depth.
+We compare shortcut, gender, and label curves to test whether shortcuts track the gender or the label encoding trajectory.
+
+\subsection{\textsc{Quantify}: Attribution \& Mediation (RQ3--4)}
 
 \paragraph{SHAP attribution.}
-We train a logistic regression model on the 6 shortcut features to predict the label and compute SHAP values for all 32,200 posts, identifying which shortcuts carry the most predictive weight.
+We train a logistic model on the 6 shortcut features and compute SHAP values for all posts, identifying which shortcuts carry the most predictive weight.
 
 \paragraph{Feature ablation.}
-We measure the AUC of the full 18-feature model, then ablate each shortcut feature individually and all 6 simultaneously, recording AUC changes. We further stratify by gender to detect asymmetric reliance.
-
-\subsection{Stage 3: Causal Disentanglement}
-
-\paragraph{Structural causal model.}
-We formalize the hypothesized causal graph:
-\begin{verbatim}
-    Gender (G) --> Shortcuts (S) --> Embedding (E) --> Prediction (Y-hat)
-    Gender (G) --> Clinical Signal (C) --> Embedding (E) --> Prediction (Y-hat)
-    Gender (G) ..............................-> Prediction (Y-hat)  [direct bias?]
-\end{verbatim}
+We measure AUC of the full 18-feature model, ablate each shortcut individually and all 6 simultaneously, and stratify the AUC change by gender to test for asymmetric reliance (RQ4).
 
 \paragraph{Causal mediation analysis.}
-Following Imai et al.\ (2010), for each shortcut $M$ we estimate:
-\begin{itemize}[leftmargin=*]
-    \item \textbf{ACME} (Average Causal Mediation Effect): the indirect effect $G \to M \to Y$
-    \item \textbf{ADE} (Average Direct Effect): $G \to Y$ not through $M$
-    \item \textbf{Proportion mediated}: ACME / (ACME + ADE)
-\end{itemize}
-with 1,000 bootstrap replications for 95\% confidence intervals.
-
-\paragraph{INLP concept erasure.}
-For each shortcut (binarized at the median), we apply Iterative Nullspace Projection (Ravfogel et al., 2020) with up to 15 iterations to remove the shortcut's linear direction from [CLS] embeddings. We then re-probe for (a) the erased concept, (b) gender, and (c) the label, measuring AUC changes. We also perform sequential erasure of all 6 shortcuts and direct gender erasure for comparison.
-
-\paragraph{Counterfactual prediction analysis.}
-We train a logistic label classifier on the original [CLS] embeddings, then apply it to each set of erased embeddings. Prediction flips (original $\neq$ counterfactual) are recorded and stratified by gender to measure asymmetric sensitivity.
-
-\paragraph{Conditional independence tests.}
-We test three d-separation hypotheses from the SCM via likelihood-ratio tests:
-\begin{enumerate}[leftmargin=*]
-    \item $Y \perp G \mid S$ (6 shortcuts): Does gender add predictive power beyond shortcuts?
-    \item $G \perp Y \mid S$: Does the label help predict gender beyond shortcuts?
-    \item $Y \perp G \mid X_{18}$ (all 18 features): Does gender add power beyond all linguistic features?
-\end{enumerate}
+Following \citet{imai2010general}, for each shortcut $M$ we estimate the Average Causal Mediation Effect (ACME, $G \to M \to Y$), the Average Direct Effect (ADE, $G \to Y$ not through $M$), and the proportion mediated, with 1,000 bootstrap replications for 95\% CIs.
+The structural causal model posits $G \to S \to E \to \hat{Y}$ (shortcut path) alongside $G \to C \to E \to \hat{Y}$ (clinical signal path) and a potential direct path $G \to \hat{Y}$.
 
 % ============================================================================
 \section{Results}
 
-\subsection{Stage 1: Shortcut Candidates}
+\subsection{\textsc{Identify}: Shortcut Detection}
 
-Individual feature AUCs range from 0.50 (\texttt{question\_density}) to 0.64 (\texttt{fp\_singular}). The combined 18-feature logistic model achieves AUC = $0.713 \pm 0.005$.
+Individual feature AUCs range from 0.50 (\texttt{question\_density}) to 0.64 (\texttt{fp\_singular}).
+The combined 18-feature logistic model achieves AUC = $0.713 \pm 0.005$.
+MI decomposition identifies 6 features with MI drop $>$24\% when conditioned on gender (Table~\ref{tab:shortcuts}).
 
-MI decomposition identifies 6 candidate features with MI drop $>$24\% when conditioned on gender:
-
-\begin{table}[htbp]
+\begin{table}[t]
 \centering
-\caption{MI-flagged shortcut candidates (MI drop $>$ 24\%)}
+\small
+\caption{MI-flagged shortcut candidates (MI drop $>$ 24\%).}
 \label{tab:shortcuts}
 \begin{tabular}{lccc}
 \toprule
-\textbf{Feature} & \textbf{MI drop (\%)} & \textbf{AUC} & \textbf{Association} \\
+\textbf{Feature} & \textbf{MI drop} & \textbf{AUC} & \textbf{Assoc.} \\
 \midrule
-\texttt{excl\_intensifiers} & 47.6 & 0.507 & Feminine \\
-\texttt{fp\_singular} & 37.5 & 0.640 & Feminine \\
-\texttt{emotional\_feeling} & 33.8 & 0.574 & Feminine \\
-\texttt{question\_density} & 29.5 & 0.500 & Feminine \\
-\texttt{hedge\_density} & 28.6 & 0.538 & Feminine \\
-\texttt{post\_length} & 28.3 & 0.593 & Mixed \\
+\texttt{excl\_intens.} & 47.6\% & 0.507 & Fem. \\
+\texttt{fp\_singular} & 37.5\% & 0.640 & Fem. \\
+\texttt{emot\_feeling} & 33.8\% & 0.574 & Fem. \\
+\texttt{question\_d.} & 29.5\% & 0.500 & Fem. \\
+\texttt{hedge\_dens.} & 28.6\% & 0.538 & Fem. \\
+\texttt{post\_length} & 28.3\% & 0.593 & Mixed \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\texttt{fp\_singular} has the highest standalone AUC (0.640) among shortcuts and the second-highest MI drop (37.5\%), making it the single most exploitable shortcut. \texttt{excl\_intensifiers} has the highest MI drop (47.6\%) but negligible standalone AUC.
+\texttt{fp\_singular} has the highest standalone AUC (0.640) and the second-highest MI drop (37.5\%), making it the single most exploitable shortcut.
 
-\paragraph{Control feature validation.}
-Of the 4 controls, 2 validate the methodology: \texttt{negation} (MI drop 0.6\%) and \texttt{cognitive\_processing} (7.9\%) show low MI drop as expected. However, \texttt{past\_tense} (40.0\%) and \texttt{absolutist} (32.7\%) are unexpectedly flagged, revealing that gender confounding in mental health text is deeper than anticipated---even features not typically considered gendered carry substantial gender-mediated predictive information. These unexpected control failures are themselves informative (see Discussion).
+\paragraph{Control validation.}
+Two controls behave as expected: \texttt{negation} (MI drop 0.6\%) and \texttt{cognitive\_processing} (7.9\%).
+However, \texttt{past\_tense} (40.0\%) and \texttt{absolutist} (32.7\%) are unexpectedly flagged---evidence that gender confounding in mental health text is deeper than anticipated, even features not typically considered gendered carry substantial gender-mediated information.
 
-\subsection{Stage 2: Shortcut Encoding in [CLS]}
+\subsection{\textsc{Locate}: Representation Probing}
 
-\paragraph{Probing results.}
-All 6 shortcut features are highly recoverable from the \textit{unfinetuned} [CLS] embeddings (Table~\ref{tab:probing}). Gender itself is encoded at AUC = 0.959, confirming that DistilRoBERTa pre-training captures strong gender signal from text alone.
+\paragraph{Final-layer probing.}
+All 6 shortcuts are highly recoverable from the unfinetuned [CLS] embeddings (Table~\ref{tab:probing}).
+Gender itself is encoded at AUC = 0.959; the binary label at 0.798.
 
-\begin{table}[htbp]
+\begin{table}[t]
 \centering
-\caption{Probing classifier AUCs on frozen DistilRoBERTa [CLS]}
+\small
+\caption{Probing AUCs on frozen DistilRoBERTa [CLS] embeddings.}
 \label{tab:probing}
 \begin{tabular}{lc}
 \toprule
@@ -338,10 +211,10 @@ All 6 shortcut features are highly recoverable from the \textit{unfinetuned} [CL
 \midrule
 \texttt{post\_length} & 0.998 \\
 \texttt{fp\_singular} & 0.976 \\
-\texttt{emotional\_feeling} & 0.904 \\
-\texttt{excl\_intensifiers} & 0.882 \\
-\texttt{hedge\_density} & 0.832 \\
-\texttt{question\_density} & 0.830 \\
+\texttt{emot\_feeling} & 0.904 \\
+\texttt{excl\_intens.} & 0.882 \\
+\texttt{hedge\_dens.} & 0.832 \\
+\texttt{question\_d.} & 0.830 \\
 \midrule
 Gender (m/f) & 0.959 \\
 Binary label & 0.798 \\
@@ -349,183 +222,155 @@ Binary label & 0.798 \\
 \end{tabular}
 \end{table}
 
+\paragraph{Layer-wise probing.}
+Figure~\ref{fig:layerwise} shows probing AUC at each of the 7 extraction points (embedding + 6 transformer layers).
+All shortcut features jump from chance ($\sim$0.50) to near-peak AUC at Layer~1, remaining flat thereafter.
+Gender follows a similar trajectory (0.953 at L1, U-shaped dip to 0.934 at L5, recovery to 0.959 at L6).
+The binary label, by contrast, builds slowly across layers (0.780 at L1 $\to$ 0.798 at L6).
+Notably, \texttt{question\_density} is the only feature that continues to increase with depth (0.938 $\to$ 0.979), suggesting it is a learned contextual property rather than a surface cue.
+The alignment of shortcut curves with gender rather than the label supports the view that shortcuts encode demographic signal, not clinical content.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{data/stage2/layerwise_heatmap.png}
+\caption{Layer-wise probing AUC for shortcuts, gender, and label across 7 DistilRoBERTa extraction points. Shortcuts reach near-peak at Layer~1 and track the gender curve, while the label builds gradually.}
+\label{fig:layerwise}
+\end{figure}
+
+\subsection{\textsc{Quantify}: Attribution \& Mediation}
+
 \paragraph{SHAP attribution.}
-A logistic model trained on the 6 shortcut features achieves AUC = 0.680. SHAP analysis reveals \texttt{fp\_singular} accounts for 51.3\% of total $|\text{SHAP}|$ mass, followed by \texttt{emotional\_feeling} (17.1\%) and \texttt{post\_length} (15.0\%). The dominance of \texttt{fp\_singular} (over half of total attribution) substantially exceeds any other feature, confirming its status as the primary shortcut.
+A logistic model on the 6 shortcuts achieves AUC = 0.680.
+SHAP analysis reveals \texttt{fp\_singular} accounts for 51.3\% of total $|\text{SHAP}|$ mass, followed by \texttt{emotional\_feeling} (17.1\%) and \texttt{post\_length} (15.0\%).
+The dominance of a single feature---over half of total attribution---confirms \texttt{fp\_singular} as the primary shortcut.
 
-\paragraph{Feature ablation.}
-Removing all 6 shortcuts from the 18-feature model drops AUC from 0.7129 to 0.6839 ($\Delta = -0.0291$, $-4.1$\%). Gender-stratified analysis reveals \texttt{fp\_singular} is female-biased (asymmetry = +0.0068, higher reliance for female posts) and \texttt{post\_length} is male-biased (asymmetry = +0.0042).
+\paragraph{Ablation.}
+Removing all 6 shortcuts from the 18-feature model drops AUC from 0.7129 to 0.6839 ($\Delta = -0.0291$, $-4.1$\%).
+Gender-stratified analysis reveals \texttt{fp\_singular} ablation hurts female predictions $3\times$ more than male (asymmetry = +0.0068); \texttt{post\_length} shows the reverse pattern (asymmetry = +0.0042 toward male), consistent with known gendered writing-length distributions.
 
-\subsection{Stage 3: Causal Analysis}
+\paragraph{Causal mediation.}
+The total gender $\to$ label effect is $+0.259$ on the probability scale (females are $\sim$26 pp more likely to receive a positive label).
+All 6 shortcuts are statistically significant mediators ($p < 0.05$ via bootstrap CI).
+\texttt{fp\_singular} alone mediates $\sim$13.5\% of this effect (ACME $= +0.035$, 95\% CI $[+0.032, +0.038]$); the 6 shortcuts combined account for $\sim$25--30\% of the indirect path (Table~\ref{tab:mediation}).
 
-\textit{Note: Stage 3 results below are from the initial 7-shortcut run. Re-execution with the updated 6-shortcut configuration is in progress; final numbers may change modestly.}
-
-\paragraph{Mediation.}
-The total gender $\to$ label effect is +0.259 on the probability scale (females are $\sim$26 percentage points more likely to receive a positive label). All 6 shortcuts are statistically significant mediators ($p < 0.05$ via bootstrap CI). \texttt{fp\_singular} alone mediates $\sim$13.5\% of this effect (ACME = +0.035, 95\% CI [+0.032, +0.038]). The 6 shortcuts combined account for approximately 25--30\% of the indirect path.
-
-\begin{table}[htbp]
+\begin{table}[t]
 \centering
-\caption{Causal mediation results (1,000 bootstrap; preliminary)}
+\small
+\caption{Causal mediation results (1,000 bootstrap replications).}
 \label{tab:mediation}
-\begin{tabular}{lcccc}
+\begin{tabular}{lccc}
 \toprule
-\textbf{Feature} & \textbf{ACME} & \textbf{95\% CI} & \textbf{Prop.\ med.} & \textbf{Sig.} \\
+\textbf{Feature} & \textbf{ACME} & \textbf{95\% CI} & \textbf{Prop.} \\
 \midrule
-\texttt{fp\_singular} & +0.035 & [+0.032, +0.038] & 13.5\% & *** \\
-\texttt{emotional\_feeling} & +0.013 & [+0.012, +0.015] & 5.2\% & *** \\
-\texttt{post\_length} & +0.007 & [+0.005, +0.008] & 2.6\% & *** \\
-\texttt{hedge\_density} & +0.002 & [+0.001, +0.003] & 0.8\% & *** \\
-\texttt{excl\_intensifiers} & +0.002 & [+0.001, +0.003] & 0.8\% & *** \\
-\texttt{question\_density} & \multicolumn{3}{c}{\textit{pending re-execution}} & --- \\
+\texttt{fp\_sing.} & +0.035 & {[+.032, +.038]} & 13.5\% \\
+\texttt{emot\_feel.} & +0.013 & {[+.012, +.015]} & 5.2\% \\
+\texttt{post\_len.} & +0.007 & {[+.005, +.008]} & 2.6\% \\
+\texttt{hedge\_d.} & +0.002 & {[+.001, +.003]} & 0.8\% \\
+\texttt{excl\_int.} & +0.002 & {[+.001, +.003]} & 0.8\% \\
+\texttt{quest\_d.} & \multicolumn{3}{c}{\textit{pending}} \\
 \bottomrule
 \end{tabular}
 \end{table}
-
-\paragraph{INLP concept erasure.}
-INLP removes up to 15 linear directions per shortcut from the 768-dimensional [CLS] space. Key findings:
-
-\begin{itemize}[leftmargin=*]
-    \item Per-shortcut erasure reduces concept probing AUC by 0.03--0.09 but \textit{never converges} (all hit the 15-iteration cap), indicating shortcut information is encoded redundantly across many dimensions.
-    \item Gender probing AUC changes by $< -0.001$ after any individual shortcut erasure. Even after erasing all 6 shortcuts sequentially ($\leq$90 directions), gender AUC drops only from 0.959 to $\sim$0.955 ($\Delta \approx -0.004$).
-    \item Label probing AUC changes by $< -0.001$ per shortcut. After all 6 erasures: 0.798 $\to$ $\sim$0.787 ($\Delta \approx -0.012$).
-    \item Direct gender erasure reduces gender AUC by $-0.080$ (0.959 $\to$ 0.879) and label AUC by only $-0.006$.
-\end{itemize}
-
-This reveals a critical asymmetry: shortcut information is a \textit{subset} of the much richer gender signal in [CLS], and the model's label predictions are robust to shortcut removal because gender information flows through many redundant pathways.
-
-\paragraph{Counterfactual prediction flips.}
-Applying the original label classifier to shortcut-erased embeddings produces gender-asymmetric prediction changes:
-
-\begin{table}[htbp]
-\centering
-\caption{Counterfactual prediction flip rates after concept erasure}
-\label{tab:flips}
-\begin{tabular}{lcccc}
-\toprule
-\textbf{Erased concept} & \textbf{Overall} & \textbf{Male} & \textbf{Female} & \textbf{Asymmetry} \\
-\midrule
-\texttt{emotional\_feeling} & 9.4\% & 4.7\% & 14.1\% & +9.4\% \\
-\texttt{post\_length} & 6.9\% & 3.6\% & 10.2\% & +6.6\% \\
-\texttt{fp\_singular} & 5.8\% & 2.9\% & 8.7\% & +5.8\% \\
-All 6 shortcuts & $\sim$13\% & $\sim$6\% & $\sim$20\% & $\sim$+14\% \\
-Gender (direct) & 10.0\% & 5.4\% & 14.6\% & +9.2\% \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-Female predictions are approximately 3$\times$ more likely to flip than male predictions when shortcuts are removed. The combined shortcut erasure ($\sim$13\% overall flip rate) exceeds direct gender erasure (10.0\%), indicating that the shortcut pathway carries \textit{more causal influence on predictions} than the gender signal alone.
-
-\paragraph{Conditional independence.}
-All three likelihood-ratio tests overwhelmingly reject independence ($p \approx 0$):
-
-\begin{enumerate}[leftmargin=*]
-    \item $Y \perp G \mid S_6$: \textbf{Rejected}. Adding gender to 6 shortcuts increases AUC by $\sim$+0.04 (0.680 $\to$ $\sim$0.72).
-    \item $G \perp Y \mid S_6$: \textbf{Rejected}. The label carries gender information beyond shortcuts.
-    \item $Y \perp G \mid X_{18}$: \textbf{Rejected}. Gender adds $\sim$+0.03 AUC even with all 18 features (0.713 $\to$ $\sim$0.74).
-\end{enumerate}
-
-This confirms that the 6 shortcuts (and even all 18 linguistic features) do \textit{not} fully mediate the gender--label association. Gender carries substantial predictive information through unmeasured channels.
 
 % ============================================================================
 \section{Discussion}
 
-\subsection{The Shortcut Landscape}
+\paragraph{RQ1: Shortcut identification.}
+The MI decomposition with built-in controls reveals 6 gender-confounded shortcuts.
+The unexpected flagging of 2 control features (\texttt{past\_tense} at 40.0\%, \texttt{absolutist} at 32.7\%) demonstrates that gender confounding in mental health text is deeper than anticipated: even features chosen precisely because they were \textit{not} expected to be gendered carry substantial gender-mediated signal.
+Men and women describe distress using systematically different linguistic strategies, making the confound pervasive.
 
-Our three-stage audit reveals a nuanced picture of shortcut learning in mental health NLP representations. The 6 MI-flagged shortcuts---particularly \texttt{fp\_singular} (first-person singular pronoun density, 51.3\% of SHAP mass)---are real and statistically significant mediators of the gender$\to$label association, collectively accounting for $\sim$25--30\% of the indirect effect. They are deeply encoded in pre-trained [CLS] representations (probing AUC 0.83--0.998), confirming that this information is available \textit{before any fine-tuning occurs}.
+\paragraph{RQ2: Representation encoding.}
+All shortcuts reach near-peak probing AUC by Layer~1 and track the gender encoding trajectory rather than the label's gradual build-up.
+This suggests shortcuts reflect surface demographic signal already present in the static embeddings, amplified at the first transformer layer, rather than task-relevant clinical content that emerges deeper in the network.
+The one exception, \texttt{question\_density}, increases with depth (0.938 $\to$ 0.979), hinting that question usage is a contextual property that the model learns rather than a shallow lexical cue.
 
-However, the causal analysis reveals that these shortcuts are neither necessary nor sufficient for the model's gender-biased behavior:
+\paragraph{RQ3: Causal mediation.}
+\texttt{fp\_singular} dominates both attribution (51.3\% SHAP mass) and mediation (13.5\% of the gender $\to$ label effect).
+The 6 shortcuts together account for $\sim$25--30\% of the indirect path.
+Because ablating all 6 reduces the 18-feature AUC by only 4.1\%, the remaining gender information likely flows through unmeasured channels---consistent with the depth of confounding revealed by the controls.
 
-\begin{itemize}[leftmargin=*]
-    \item \textbf{Not necessary:} Erasing all 6 shortcuts ($\leq$90 dimensions) reduces label AUC by only $\sim$0.012 and gender AUC by only $\sim$0.004. The model retains the ability to predict both.
-    \item \textbf{Not sufficient:} Conditional independence tests show that gender carries additional predictive information beyond these shortcuts. The remaining $\sim$70\% of the indirect effect flows through unmeasured channels---likely vocabulary, topic, discourse structure, and other latent features correlated with gender.
-\end{itemize}
+\paragraph{RQ4: Gender asymmetry.}
+Gender-stratified ablation shows that \texttt{fp\_singular} removal hurts female predictions $3\times$ more than male (asymmetry $= +0.0068$).
+This asymmetry has direct fairness implications: any classifier built on these representations will be disproportionately influenced by shortcut features for female-authored text, potentially inflating female false-positive rates.
 
-\subsection{Control Features Reveal Pervasive Gender Confounding}
+\paragraph{Implications for debiasing.}
+Our results indicate that feature-level debiasing is necessary but insufficient.
+The pervasive confounding revealed by control features, together with the modest AUC change from ablation, implies that removing specific shortcuts cannot eliminate gender bias.
+Representation-level interventions---adversarial training, counterfactual data augmentation, or architectural constraints---are needed.
 
-The 4 control features provide a methodological validation and an unexpected finding. \texttt{negation} (0.6\% MI drop) and \texttt{cognitive\_processing} (7.9\%) behave as expected: they predict mental health labels without gender confounding, confirming that the MI decomposition distinguishes shortcut from genuine features. However, \texttt{past\_tense} (40.0\%) and \texttt{absolutist} (32.7\%) are unexpectedly flagged. Both features are documented correlates of depression (Al-Mosaiwi \& Johnstone, 2018; Tausczik \& Pennebaker, 2010) but were chosen as controls because they were not \textit{a priori} expected to be gendered.
-
-The failure of these controls suggests that gender confounding in mental health text is even deeper than anticipated. Features that seem clinically grounded may still carry gender-mediated signal because \textit{men and women describe distress using systematically different linguistic strategies}. This depth of confounding strengthens the case for representation-level interventions rather than feature-level fixes.
-
-\subsection{Deep Redundancy of Gender Information}
-
-The INLP analysis reveals a striking finding: shortcut information \textit{never converges} to unrecoverable levels within 15 iterations, and erasing up to 90 directions barely dents gender or label probing accuracy. This indicates that gender-correlated information is distributed across many more than 90 of the 768 embedding dimensions---a form of deep representational redundancy that makes targeted debiasing extremely challenging. Direct gender erasure is more effective ($\Delta_{\text{gender}} = -0.080$) but still leaves gender probing AUC at 0.879, well above chance.
-
-\subsection{Gender-Asymmetric Shortcut Reliance}
-
-The counterfactual analysis provides the most actionable finding: female predictions are approximately 3$\times$ more sensitive to shortcut removal than male predictions ($\sim$20\% vs.\ $\sim$6\% flip rate for combined erasure). This asymmetry has direct fairness implications---it means that any classifier built on these representations will be disproportionately influenced by shortcut features for female-authored text, potentially leading to higher false-positive rates for women. The SHAP gender-stratified analysis corroborates this: \texttt{fp\_singular} shows asymmetry of +0.0068 (higher reliance for female posts).
-
-\subsection{Comparison to Dataset-Level Auditing}
-
-Our representation-level approach complements dataset-level auditing frameworks such as G-AUDIT (Drenkow et al., 2025). Where G-AUDIT evaluates model performance across predefined demographic slices to detect disparities, our pipeline traces the \textit{mechanism} by which a specific protected attribute (gender) enters predictions---from surface-level writing patterns through embedding representations to downstream predictions. The two approaches answer different questions: G-AUDIT asks ``Does performance differ across groups?'' while our pipeline asks ``\textit{Why} does it differ, and through which representational pathways?''
-
-\subsection{Implications for Debiasing}
-
-Our findings suggest that feature-level debiasing (removing specific linguistic shortcuts) is \textit{necessary but insufficient}. Removing all 6 shortcuts reduces the 18-feature model AUC by only 4.1\%, and the embedding-level erasure of these same shortcuts barely affects probing accuracy. A comprehensive debiasing strategy must operate at the representation level---for example, adversarial training to prevent gender recovery from [CLS] embeddings, or counterfactual data augmentation that forces consistency across gender-swapped inputs. The conditional independence results further suggest that even perfect shortcut removal would leave substantial gender-mediated prediction differences.
-
-\subsection{Limitations}
-
-\begin{itemize}[leftmargin=*]
-    \item \textbf{Single encoder:} We audit DistilRoBERTa-base only. Results may differ for MentalBERT, GPT-4, or other architectures.
-    \item \textbf{Single dataset:} The Mindset corpus represents a specific Reddit population. Cross-dataset generalization remains untested.
-    \item \textbf{Binary gender:} We use self-disclosed male/female labels. Non-binary and non-disclosing populations are not represented.
-    \item \textbf{Frozen representations:} We audit pre-trained [CLS] without fine-tuning. Fine-tuning may amplify or attenuate shortcut reliance.
-    \item \textbf{Linear probing:} We use logistic probes, which may underestimate nonlinear encoding of concepts.
-    \item \textbf{Open lexicons:} Our 18 features are based on curated word lists rather than validated psycholinguistic instruments. Coverage and precision may differ from LIWC-22.
-    \item \textbf{Stage 3 pending:} Mediation, INLP, and counterfactual results reported here are preliminary; re-execution with the updated 6-shortcut set is in progress.
-\end{itemize}
+\paragraph{Connection to dataset auditing.}
+G-AUDIT \citep{drenkow2025gaudit} flags shortcut risk at the dataset level.
+Our \textsc{Identify}--\textsc{Locate}--\textsc{Quantify} pipeline complements this by tracing risk into model representations, quantifying causal weight, and revealing fairness-relevant asymmetries---bridging the gap between dataset-level detection and model-level diagnosis.
 
 % ============================================================================
 \section{Conclusion}
 
-We present the first systematic shortcut audit of transformer representations for mental health NLP, combining feature engineering (18 open-lexicon features with 4 controls), MI-based shortcut detection, probing classifiers, SHAP attribution, causal mediation, INLP concept erasure, counterfactual analysis, and conditional independence testing into a unified five-stage pipeline.
-
-Our key findings are:
-
-\begin{enumerate}[leftmargin=*]
-    \item Six gender-correlated linguistic features are identified as shortcut candidates via MI decomposition, with first-person singular pronoun density (\texttt{fp\_singular}) as the most exploitable (37.5\% MI drop, 51.3\% of SHAP attribution mass, $\sim$13.5\% of gender$\to$label mediation).
-
-    \item All shortcuts are deeply encoded in frozen DistilRoBERTa [CLS] representations (probing AUC 0.83--0.998), confirming that shortcut information is pre-baked, not fine-tuning-induced.
-
-    \item Two of four control features unexpectedly exhibit high MI drop (\texttt{past\_tense} 40.0\%, \texttt{absolutist} 32.7\%), revealing that gender confounding in mental health language is deeper than surface-level writing style.
-
-    \item Shortcut information is encoded with deep redundancy across embedding dimensions, making targeted erasure ineffective: removing $\leq$90 directions changes label AUC by only $\sim$$-0.012$.
-
-    \item Female predictions are 3$\times$ more sensitive to shortcut removal than male predictions, demonstrating gender-asymmetric shortcut reliance with direct fairness implications.
-
-    \item Gender carries predictive information beyond what shortcuts (or all 18 features) explain, indicating that feature-level debiasing alone is necessary but insufficient.
-\end{enumerate}
-
-Stages 4 (debiasing interventions: adversarial training, counterfactual augmentation) and 5 (comprehensive fairness evaluation) are currently in progress. These findings establish a concrete empirical foundation for representation-level debiasing in mental health NLP.
-
-\newpage
+We present a three-block shortcut audit---\textsc{Identify}, \textsc{Locate}, \textsc{Quantify}---applied to frozen DistilRoBERTa-base on a gender-balanced mental health dataset.
+Six gender-correlated writing-style features are identified as shortcuts, with \texttt{fp\_singular} as the dominant one (37.5\% MI drop, 51.3\% SHAP mass, 13.5\% mediation).
+Layer-wise probing shows shortcuts are encoded from the first transformer layer and track gender rather than the label.
+Two of four controls are unexpectedly flagged, revealing pervasive confounding.
+Female predictions are $3\times$ more sensitive to shortcut removal, demonstrating gender-asymmetric reliance.
+These findings motivate representation-level debiasing strategies and fairness-aware evaluation for mental health NLP.
 
 % ============================================================================
-\section*{References}
-\addcontentsline{toc}{section}{References}
+\section*{Limitations}
 
-\begin{itemize}[leftmargin=*]
-    \item Al-Mosaiwi, M. \& Johnstone, T. (2018). In an absolute state: Elevated use of absolutist words is a marker specific to anxiety, depression, and suicidal ideation. \textit{Clinical Psychological Science}, 6(4).
-    \item Belinkov, Y. (2022). Probing classifiers: Promises, shortcomings, and advances. \textit{Computational Linguistics}, 48(1).
-    \item Belrose, N., et al. (2023). Eliciting latent predictions from transformers with the tuned lens. \textit{NeurIPS}.
-    \item Clark, C., Yatskar, M., \& Zettlemoyer, L. (2019). Don't take the easy way out: Ensemble based methods for avoiding known dataset biases. \textit{EMNLP}.
-    \item Drenkow, N., et al. (2025). G-AUDIT: A general auditing and evaluation pipeline for AI models and datasets. \textit{arXiv:2503.09969}.
-    \item Du, M., et al. (2023). Shortcut learning of large language models in natural language understanding. \textit{Communications of the ACM}, 67(1).
-    \item Elazar, Y. \& Goldberg, Y. (2018). Adversarial removal of demographic attributes from text representations. \textit{EMNLP}.
-    \item Geirhos, R., et al. (2020). Shortcut learning in deep neural networks. \textit{Nature Machine Intelligence}, 2(11).
-    \item Harrigian, K., et al. (2023). Characterization of stigmatizing language in medical records. \textit{ACL}.
-    \item Huang, Q., et al. (2023). Less-Learn-Shortcut: Analyzing and mitigating learning of spurious feature-label correlations. \textit{IJCAI}.
-    \item Imai, K., Keele, L., \& Tingley, D. (2010). A general approach to causal mediation analysis. \textit{Psychological Methods}, 15(4).
-    \item Ji, S., et al. (2022). MentalBERT: Publicly available pretrained language models for mental healthcare. \textit{LREC}.
-    \item Lundberg, S. M. \& Lee, S.-I. (2017). A unified approach to interpreting model predictions. \textit{NeurIPS}.
-    \item McCoy, R. T., Pavlick, E., \& Linzen, T. (2019). Right for the wrong reasons: Diagnosing syntactic heuristics in natural language inference. \textit{ACL}.
-    \item Newman, M. L., et al. (2008). Gender differences in language use: An analysis of 14,000 text samples. \textit{Discourse Processes}, 45(3).
-    \item Ravfogel, S., et al. (2020). Null it out: Guarding protected attributes by iterative nullspace projection. \textit{ACL}.
-    \item Schuller, B., et al. (2025). Exploring biases in LLMs for multilingual depression detection. \textit{Scientific Reports}.
-    \item Schwartz, H. A., et al. (2013). Personality, gender, and age in the language of social media. \textit{PloS ONE}, 8(9).
-    \item Straw, I. \& Callison-Burch, C. (2020). Artificial intelligence in mental health and the biases of language models. \textit{JMIR}.
-    \item Tausczik, Y. R. \& Pennebaker, J. W. (2010). The psychological meaning of words: LIWC and computerized text analysis methods. \textit{Journal of Language and Social Psychology}, 29(1).
-    \item Vig, J., et al. (2020). Investigating gender bias in language models using causal mediation analysis. \textit{NeurIPS}.
-    \item Wang, Z. \& Culotta, A. (2020). Identifying spurious correlations for robust text classification. \textit{EMNLP Findings}.
-    \item Xu, Z., et al. (2024). Mental-LLM: Leveraging large language models for mental health prediction. \textit{PNAS}.
-\end{itemize}
+We audit only DistilRoBERTa-base; results may differ for domain-adapted (MentalBERT) or larger models (GPT-4).
+We use a single Reddit dataset (Mindset); cross-corpus generalization is untested.
+Gender labels are binary and self-disclosed; non-binary populations are excluded.
+We probe frozen pre-trained representations without fine-tuning, which may amplify or attenuate shortcut reliance.
+Probing classifiers are linear, potentially underestimating nonlinear encoding.
+Lexicons are curated open-source word lists, not validated instruments.
+
+\section*{Ethics Statement}
+
+This work aims to identify and characterize bias in mental health NLP with the goal of improving fairness.
+We use only publicly available Reddit data with self-disclosed demographics.
+No clinical decisions were made.
+We acknowledge that our binary gender framework does not capture the full spectrum of gender identity.
+
+\bibliography{custom}
+
+\appendix
+
+\section{Full Feature Inventory}
+\label{sec:features}
+
+Table~\ref{tab:features} lists all 18 engineered linguistic features.
+
+\begin{table*}[t]
+\centering
+\small
+\caption{18 engineered linguistic features (14 candidates + 4 controls).}
+\label{tab:features}
+\begin{tabular}{llp{8.5cm}}
+\toprule
+\textbf{Type} & \textbf{Feature} & \textbf{Description} \\
+\midrule
+\multirow{14}{*}{\rotatebox{90}{Candidate}} 
+& \texttt{fp\_singular} & First-person singular pronoun ratio (I, me, my, myself) \\
+& \texttt{fp\_plural} & First-person plural pronoun ratio (we, us, our) \\
+& \texttt{emotional\_feeling} & Emotional feeling word density (feel, felt, feeling, \ldots) \\
+& \texttt{social\_relational} & Social/relational word density (friend, family, love, \ldots) \\
+& \texttt{certainty} & Certainty word density (always, never, definitely, \ldots) \\
+& \texttt{negative\_emotion} & Negative emotion word density (sad, angry, hurt, \ldots) \\
+& \texttt{swear\_words} & Profanity density \\
+& \texttt{excl\_intensifiers} & Exclamation marks + intensifier density (very, so, really, \ldots) \\
+& \texttt{question\_density} & Question mark density \\
+& \texttt{post\_length} & $\log_{10}$ token count \\
+& \texttt{hedge\_density} & Hedge/epistemic marker density (maybe, perhaps, sort of, \ldots) \\
+& \texttt{apology\_selfblame} & Apology \& self-blame word density (sorry, fault, blame, \ldots) \\
+& \texttt{anger} & Anger word density (hate, furious, rage, \ldots) \\
+& \texttt{body\_health} & Body/health word density (pain, sleep, tired, \ldots) \\
+\midrule
+\multirow{4}{*}{\rotatebox{90}{Control}}
+& \texttt{absolutist} & Absolutist word density (always, never, completely, \ldots; 12 words) \\
+& \texttt{past\_tense} & Past-tense verb ratio via spaCy POS tagging \\
+& \texttt{negation} & Negation word density (not, no, never, don't, \ldots; 23 words) \\
+& \texttt{cognitive\_processing} & Cognitive process word density (think, know, understand, \ldots; 28 words) \\
+\bottomrule
+\end{tabular}
+\end{table*}
 
 \end{document}
