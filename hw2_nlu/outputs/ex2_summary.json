@@ -1,0 +1,118 @@
+{
+  "gpt2": {
+    "Completely Unrelated": {
+      "n": 1,
+      "avg_delta_logp_yes": -0.03792458772659302,
+      "flips_yes_to_no": 0
+    },
+    "Context Inversion": {
+      "n": 1,
+      "avg_delta_logp_yes": -0.10189133882522583,
+      "flips_yes_to_no": 0
+    },
+    "Explicit Negation": {
+      "n": 1,
+      "avg_delta_logp_yes": -0.06846213340759277,
+      "flips_yes_to_no": 0
+    },
+    "Role Reversal": {
+      "n": 1,
+      "avg_delta_logp_yes": -0.148182213306427,
+      "flips_yes_to_no": 1
+    },
+    "Adjective/Object Swap": {
+      "n": 1,
+      "avg_delta_logp_yes": 0.03944903612136841,
+      "flips_yes_to_no": 0
+    },
+    "Passive Voice": {
+      "n": 1,
+      "avg_delta_logp_yes": -0.0726921558380127,
+      "flips_yes_to_no": 0
+    },
+    "Verb Opposition": {
+      "n": 1,
+      "avg_delta_logp_yes": -0.0013736486434936523,
+      "flips_yes_to_no": 0
+    },
+    "Contradictory Outcome": {
+      "n": 1,
+      "avg_delta_logp_yes": -0.13062065839767456,
+      "flips_yes_to_no": 0
+    },
+    "Explicit Negation (Semantic)": {
+      "n": 1,
+      "avg_delta_logp_yes": 0.030032813549041748,
+      "flips_yes_to_no": 0
+    },
+    "Antonym Swapping": {
+      "n": 1,
+      "avg_delta_logp_yes": -0.02089589834213257,
+      "flips_yes_to_no": 0
+    },
+    "__overall__": {
+      "model": "gpt2",
+      "n": 10,
+      "orig_accuracy_vs_true_label": 0.8,
+      "mean_delta_logp_yes": -0.0512560784816742
+    }
+  },
+  "HuggingFaceTB/SmolLM-135M": {
+    "Completely Unrelated": {
+      "n": 1,
+      "avg_delta_logp_yes": -0.012639284133911133,
+      "flips_yes_to_no": 0
+    },
+    "Context Inversion": {
+      "n": 1,
+      "avg_delta_logp_yes": -0.04867833852767944,
+      "flips_yes_to_no": 0
+    },
+    "Explicit Negation": {
+      "n": 1,
+      "avg_delta_logp_yes": -0.0472622811794281,
+      "flips_yes_to_no": 0
+    },
+    "Role Reversal": {
+      "n": 1,
+      "avg_delta_logp_yes": 0.013667970895767212,
+      "flips_yes_to_no": 0
+    },
+    "Adjective/Object Swap": {
+      "n": 1,
+      "avg_delta_logp_yes": 0.0381908118724823,
+      "flips_yes_to_no": 0
+    },
+    "Passive Voice": {
+      "n": 1,
+      "avg_delta_logp_yes": 0.005706220865249634,
+      "flips_yes_to_no": 0
+    },
+    "Verb Opposition": {
+      "n": 1,
+      "avg_delta_logp_yes": -0.03279249370098114,
+      "flips_yes_to_no": 0
+    },
+    "Contradictory Outcome": {
+      "n": 1,
+      "avg_delta_logp_yes": -0.02813078463077545,
+      "flips_yes_to_no": 0
+    },
+    "Explicit Negation (Semantic)": {
+      "n": 1,
+      "avg_delta_logp_yes": -0.019317179918289185,
+      "flips_yes_to_no": 0
+    },
+    "Antonym Swapping": {
+      "n": 1,
+      "avg_delta_logp_yes": -0.15391063690185547,
+      "flips_yes_to_no": 0
+    },
+    "__overall__": {
+      "model": "HuggingFaceTB/SmolLM-135M",
+      "n": 10,
+      "orig_accuracy_vs_true_label": 1.0,
+      "mean_delta_logp_yes": -0.02851659953594208
+    }
+  }
+}

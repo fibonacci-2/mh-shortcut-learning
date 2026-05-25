@@ -1,0 +1,200 @@
+[NbConvertApp] Converting notebook 02d_shortcut_auditing_deberta.ipynb to notebook
+Traceback (most recent call last):
+  File "/gpfs/automountdir/gpfs/homes/SEAS/home/g21775526/code/mh-shortcut-learning/.venv/bin/jupyter-nbconvert", line 6, in <module>
+    sys.exit(main())
+             ~~~~^^
+  File "/gpfs/automountdir/gpfs/homes/SEAS/home/g21775526/code/mh-shortcut-learning/.venv/lib/python3.13/site-packages/jupyter_core/application.py", line 284, in launch_instance
+    super().launch_instance(argv=argv, **kwargs)
+    ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/gpfs/automountdir/gpfs/homes/SEAS/home/g21775526/code/mh-shortcut-learning/.venv/lib/python3.13/site-packages/traitlets/config/application.py", line 1075, in launch_instance
+    app.start()
+    ~~~~~~~~~^^
+  File "/gpfs/automountdir/gpfs/homes/SEAS/home/g21775526/code/mh-shortcut-learning/.venv/lib/python3.13/site-packages/nbconvert/nbconvertapp.py", line 420, in start
+    self.convert_notebooks()
+    ~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/gpfs/automountdir/gpfs/homes/SEAS/home/g21775526/code/mh-shortcut-learning/.venv/lib/python3.13/site-packages/nbconvert/nbconvertapp.py", line 597, in convert_notebooks
+    self.convert_single_notebook(notebook_filename)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "/gpfs/automountdir/gpfs/homes/SEAS/home/g21775526/code/mh-shortcut-learning/.venv/lib/python3.13/site-packages/nbconvert/nbconvertapp.py", line 563, in convert_single_notebook
+    output, resources = self.export_single_notebook(
+                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        notebook_filename, resources, input_buffer=input_buffer
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/gpfs/automountdir/gpfs/homes/SEAS/home/g21775526/code/mh-shortcut-learning/.venv/lib/python3.13/site-packages/nbconvert/nbconvertapp.py", line 487, in export_single_notebook
+    output, resources = self.exporter.from_filename(
+                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        notebook_filename, resources=resources
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/gpfs/automountdir/gpfs/homes/SEAS/home/g21775526/code/mh-shortcut-learning/.venv/lib/python3.13/site-packages/nbconvert/exporters/exporter.py", line 201, in from_filename
+    return self.from_file(f, resources=resources, **kw)
+           ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/gpfs/automountdir/gpfs/homes/SEAS/home/g21775526/code/mh-shortcut-learning/.venv/lib/python3.13/site-packages/nbconvert/exporters/exporter.py", line 220, in from_file
+    return self.from_notebook_node(
+           ~~~~~~~~~~~~~~~~~~~~~~~^
+        nbformat.read(file_stream, as_version=4), resources=resources, **kw
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/gpfs/automountdir/gpfs/homes/SEAS/home/g21775526/code/mh-shortcut-learning/.venv/lib/python3.13/site-packages/nbconvert/exporters/notebook.py", line 36, in from_notebook_node
+    nb_copy, resources = super().from_notebook_node(nb, resources, **kw)
+                         ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/gpfs/automountdir/gpfs/homes/SEAS/home/g21775526/code/mh-shortcut-learning/.venv/lib/python3.13/site-packages/nbconvert/exporters/exporter.py", line 154, in from_notebook_node
+    nb_copy, resources = self._preprocess(nb_copy, resources)
+                         ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "/gpfs/automountdir/gpfs/homes/SEAS/home/g21775526/code/mh-shortcut-learning/.venv/lib/python3.13/site-packages/nbconvert/exporters/exporter.py", line 353, in _preprocess
+    nbc, resc = preprocessor(nbc, resc)
+                ~~~~~~~~~~~~^^^^^^^^^^^
+  File "/gpfs/automountdir/gpfs/homes/SEAS/home/g21775526/code/mh-shortcut-learning/.venv/lib/python3.13/site-packages/nbconvert/preprocessors/base.py", line 48, in __call__
+    return self.preprocess(nb, resources)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "/gpfs/automountdir/gpfs/homes/SEAS/home/g21775526/code/mh-shortcut-learning/.venv/lib/python3.13/site-packages/nbconvert/preprocessors/execute.py", line 103, in preprocess
+    self.preprocess_cell(cell, resources, index)
+    ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/gpfs/automountdir/gpfs/homes/SEAS/home/g21775526/code/mh-shortcut-learning/.venv/lib/python3.13/site-packages/nbconvert/preprocessors/execute.py", line 124, in preprocess_cell
+    cell = self.execute_cell(cell, index, store_history=True)
+  File "/gpfs/automountdir/gpfs/homes/SEAS/home/g21775526/code/mh-shortcut-learning/.venv/lib/python3.13/site-packages/jupyter_core/utils/__init__.py", line 165, in wrapped
+    return loop.run_until_complete(inner)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^
+  File "/c1/apps/python3/3.13.3/lib/python3.13/asyncio/base_events.py", line 719, in run_until_complete
+    return future.result()
+           ~~~~~~~~~~~~~^^
+  File "/gpfs/automountdir/gpfs/homes/SEAS/home/g21775526/code/mh-shortcut-learning/.venv/lib/python3.13/site-packages/nbclient/client.py", line 1062, in async_execute_cell
+    await self._check_raise_for_error(cell, cell_index, exec_reply)
+  File "/gpfs/automountdir/gpfs/homes/SEAS/home/g21775526/code/mh-shortcut-learning/.venv/lib/python3.13/site-packages/nbclient/client.py", line 918, in _check_raise_for_error
+    raise CellExecutionError.from_cell_and_msg(cell, exec_reply_content)
+nbclient.exceptions.CellExecutionError: An error occurred while executing the following cell:
+------------------
+ft_model = AutoModelForSequenceClassification.from_pretrained(
+    MODEL_NAME, num_labels=2, ignore_mismatched_sizes=True
+)
+
+def compute_metrics(eval_pred):
+    logits, labels = eval_pred
+    probs = torch.softmax(torch.tensor(logits), dim=-1).numpy()[:, 1]
+    preds = (probs > 0.5).astype(int)
+    return {'roc_auc': roc_auc_score(labels, probs), 'f1': f1_score(labels, preds)}
+
+training_args = TrainingArguments(
+    output_dir=FT_MODEL_DIR,
+    num_train_epochs=NUM_EPOCHS,
+    per_device_train_batch_size=BATCH_SIZE_FT,
+    per_device_eval_batch_size=32,
+    learning_rate=LEARNING_RATE,
+    weight_decay=0.01,
+    warmup_ratio=0.10,           # was 0.06 — DeBERTa-v3 needs longer warmup
+    max_grad_norm=1.0,           # explicit clipping; prevents early-step divergence
+    eval_strategy='epoch',
+    save_strategy='epoch',
+    # NOTE: load_best_model_at_end disabled. The safetensors reload of DeBERTa-v2
+    # checkpoints renames LayerNorm.gamma/beta -> weight/bias, leaving 50+
+    # LayerNorm parameters re-initialised at random. We instead evaluate every
+    # epoch and identify the best epoch from eval logs, then point probing at
+    # that checkpoint dir directly.
+    load_best_model_at_end=False,
+    logging_steps=50,            # finer logging to spot divergence early
+    fp16=False,        # DeBERTa-v3 disentangled attention overflows in FP16; V100s lack BF16
+    adam_epsilon=1e-6, # DeBERTa-v3 requires larger epsilon; default 1e-8 causes NaN in FP32
+    report_to='none',
+)
+
+trainer = Trainer(
+    model=ft_model,
+    args=training_args,
+    train_dataset=train_ds,
+    eval_dataset=val_ds,
+    # tokenizer=tokenizer_ft,
+    data_collator=data_collator,
+    compute_metrics=compute_metrics,
+)
+
+print(f"Fine-tuning {MODEL_NAME} for {NUM_EPOCHS} epochs …")
+trainer.train()
+
+# Sanity check: look at per-epoch eval AUC. If first-epoch AUC ≈ 0.5 and F1 = 0,
+# the model failed to learn (LR/warmup issue) — stop and retune before extracting embeddings.
+print("\nPer-epoch eval log:")
+best_auc, best_ckpt = 0.0, None
+for entry in trainer.state.log_history:
+    if 'eval_roc_auc' in entry:
+        print(f"  epoch={entry['epoch']:.1f}  loss={entry.get('eval_loss', float('nan')):.4f}  "
+              f"auc={entry['eval_roc_auc']:.4f}  f1={entry.get('eval_f1', float('nan')):.4f}")
+        if entry['eval_roc_auc'] > best_auc:
+            best_auc = entry['eval_roc_auc']
+            best_ckpt = entry['epoch']
+print(f"\nBest epoch: {best_ckpt} (eval_AUC={best_auc:.4f})")
+assert best_auc > 0.70, (
+    f"Fine-tune failed: best eval_AUC={best_auc:.4f} (<0.70). "
+    "Retune hyperparameters before extracting embeddings."
+)
+
+val_results = trainer.evaluate()
+print(f"\nFinal validation: {val_results}")
+
+# Save the model at the end of training (NOT the best — we deliberately avoid the
+# safetensors LayerNorm rename bug). The per-epoch checkpoints under FT_MODEL_DIR
+# remain available if a later epoch overfits and we want to roll back manually.
+trainer.save_model(FT_MODEL_DIR)
+tokenizer_ft.save_pretrained(FT_MODEL_DIR)
+print(f"Fine-tuned model saved → {FT_MODEL_DIR}")
+
+------------------
+
+----- stderr -----
+[1mDebertaV2ForSequenceClassification LOAD REPORT[0m from: microsoft/deberta-v3-base
+Key                                     | Status     | 
+----------------------------------------+------------+-
+lm_predictions.lm_head.LayerNorm.weight | UNEXPECTED | 
+lm_predictions.lm_head.dense.bias       | UNEXPECTED | 
+mask_predictions.classifier.weight      | UNEXPECTED | 
+mask_predictions.LayerNorm.bias         | UNEXPECTED | 
+mask_predictions.dense.weight           | UNEXPECTED | 
+mask_predictions.dense.bias             | UNEXPECTED | 
+mask_predictions.classifier.bias        | UNEXPECTED | 
+mask_predictions.LayerNorm.weight       | UNEXPECTED | 
+lm_predictions.lm_head.dense.weight     | UNEXPECTED | 
+lm_predictions.lm_head.LayerNorm.bias   | UNEXPECTED | 
+lm_predictions.lm_head.bias             | UNEXPECTED | 
+pooler.dense.weight                     | MISSING    | 
+classifier.weight                       | MISSING    | 
+classifier.bias                         | MISSING    | 
+pooler.dense.bias                       | MISSING    | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+- MISSING:	those params were newly initialized because missing from the checkpoint. Consider training on your downstream task.
+----- stderr -----
+warmup_ratio is deprecated and will be removed in v5.2. Use `warmup_steps` instead.
+----- stderr -----
+[RANK 0] Detected kernel version 4.18.0, which is below the recommended minimum of 5.5.0; this can cause the process to hang. It is recommended to upgrade the kernel to the minimum version or higher.
+----- stdout -----
+Fine-tuning microsoft/deberta-v3-base for 5 epochs …
+----- stdout -----
+
+Per-epoch eval log:
+  epoch=1.0  loss=2.4713  auc=0.5108  f1=0.0000
+  epoch=2.0  loss=2.4386  auc=0.5000  f1=0.0000
+  epoch=3.0  loss=2.4482  auc=0.5000  f1=0.0000
+  epoch=4.0  loss=2.4377  auc=0.5000  f1=0.0000
+  epoch=5.0  loss=2.4373  auc=0.5000  f1=0.0000
+
+Best epoch: 1.0 (eval_AUC=0.5108)
+------------------
+
+[31m---------------------------------------------------------------------------[39m
+[31mAssertionError[39m                            Traceback (most recent call last)
+[36mCell[39m[36m [39m[32mIn[15][39m[32m, line 59[39m
+[32m     55[39m         [38;5;28;01mif[39;00m entry[[33m'eval_roc_auc'[39m] > best_auc:
+[32m     56[39m             best_auc = entry[[33m'eval_roc_auc'[39m]
+[32m     57[39m             best_ckpt = entry[[33m'epoch'[39m]
+[32m     58[39m print(f"\nBest epoch: {best_ckpt} (eval_AUC={best_auc:.4f})")
+[32m---> [39m[32m59[39m assert best_auc > 0.70, (
+[32m     60[39m     f"Fine-tune failed: best eval_AUC={best_auc:.4f} (<0.70). "
+[32m     61[39m     [33m"Retune hyperparameters before extracting embeddings."[39m
+[32m     62[39m )
+
+[31mAssertionError[39m: Fine-tune failed: best eval_AUC=0.5108 (<0.70). Retune hyperparameters before extracting embeddings.
+

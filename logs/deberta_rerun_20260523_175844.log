@@ -1,0 +1,13 @@
+[NbConvertApp] Converting notebook 02d_shortcut_auditing_deberta.ipynb to notebook
+[NbConvertApp] ERROR | Notebook JSON is invalid: Additional properties are not allowed ('execution_count', 'outputs' were unexpected)
+
+Failed validating 'additionalProperties' in markdown_cell:
+
+On instance['cells'][25]:
+{'cell_type': 'markdown',
+ 'execution_count': None,
+ 'id': 'd0000024',
+ 'metadata': {},
+ 'outputs': ['...0 outputs...'],
+ 'source': '## B1 — Probing Classifiers (Fine-tuned)'}
+[IPKernelApp] WARNING | Parent appears to have exited, shutting down.

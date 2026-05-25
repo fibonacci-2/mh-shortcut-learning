@@ -1,0 +1,659 @@
+{
+  "base_full": {
+    "label": "BASE / full-10",
+    "n": 10,
+    "exact_match": 0.0,
+    "field_acc": {
+      "Drug": 0.0,
+      "Dosage": 0.0,
+      "Adverse_Effect": 0.0
+    },
+    "macro_field_acc": 0.0,
+    "predictions": [
+      {
+        "text": "The patient was prescribed 50mg of aspirin and subsequently developed a severe rash.",
+        "gold": {
+          "Drug": "aspirin",
+          "Dosage": "50mg",
+          "Adverse_Effect": "rash"
+        },
+        "raw_completion": "{\n\"Drug\": \"50mg\",\n\"Dosage\": \"50mg\",\n\"Adverse_Effect\": \"Severe rash\"\n}\n\nThe output is:\n\n{\n\"Drug\": \"50mg\",\n\"Dosage\": \"50mg\",\n\"Adverse_Effect\": \"Severe rash\"\n}\n\nThe output",
+        "parsed": null,
+        "exact_match": 0,
+        "field_match": {
+          "Drug": 0,
+          "Dosage": 0,
+          "Adverse_Effect": 0
+        }
+      },
+      {
+        "text": "After taking 10ml of ibuprofen, the child reported feeling nauseous.",
+        "gold": {
+          "Drug": "ibuprofen",
+          "Dosage": "10ml",
+          "Adverse_Effect": "nauseous"
+        },
+        "raw_completion": "{\n\"Drug\": \"Nausea\",\n\"Dosage\": 10,\n\"Adverse_Effect\": \"Nausea\"\n}\n\nOutput:\n\n{\n\"Drug\": \"Nausea\",\n\"Dosage\": 10,\n\"Adverse_Effect\": \"Nausea\"\n}\n\n## 10.1.2",
+        "parsed": null,
+        "exact_match": 0,
+        "field_match": {
+          "Drug": 0,
+          "Dosage": 0,
+          "Adverse_Effect": 0
+        }
+      },
+      {
+        "text": "Administered lisinopril 20 mg daily; patient complained of dry cough.",
+        "gold": {
+          "Drug": "lisinopril",
+          "Dosage": "20 mg",
+          "Adverse_Effect": "dry cough"
+        },
+        "raw_completion": "\n{\n\"Drug\": \"Lisinopril\",\n\"Dosage\": 20,\n\"Adverse_Effect\": \"Dry cough\"\n}\n\nOutput:\n\n{\"Drug\": \"Lisinopril\", \"Dosage\": 20, \"Adverse_Effect\": \"Dry cough\"}\n\n## 10.2.2.",
+        "parsed": null,
+        "exact_match": 0,
+        "field_match": {
+          "Drug": 0,
+          "Dosage": 0,
+          "Adverse_Effect": 0
+        }
+      },
+      {
+        "text": "Subject received 500mg of amoxicillin but presented with hives.",
+        "gold": {
+          "Drug": "amoxicillin",
+          "Dosage": "500mg",
+          "Adverse_Effect": "hives"
+        },
+        "raw_completion": "{\n\"Drug\": \"Amoxicillin\",\n\"Dosage\": 500,\n\"Adverse_Effect\": \"Hives\"\n}\n\n```\n\nOutput:\n\n```\n{\n\"Drug\": \"Amoxicillin\",\n\"Dosage\": 500,\n\"Adverse_Effect\": \"Hives\"\n}\n",
+        "parsed": null,
+        "exact_match": 0,
+        "field_match": {
+          "Drug": 0,
+          "Dosage": 0,
+          "Adverse_Effect": 0
+        }
+      },
+      {
+        "text": "Patient was given 2 puffs of albuterol. No side effects were reported.",
+        "gold": {
+          "Drug": "albuterol",
+          "Dosage": "2 puffs",
+          "Adverse_Effect": "None"
+        },
+        "raw_completion": "{\n\"Drug\": \"Albuterol\",\n\"Dosage\": 2,\n\"Adverse_Effect\": \"None\"\n}\n\nOutput:\n{\n\"Drug\": \"Albuterol\",\n\"Dosage\": 2,\n\"Adverse_Effect\": \"None\"\n}\n\nSentence: Patient was given 2 p",
+        "parsed": null,
+        "exact_match": 0,
+        "field_match": {
+          "Drug": 0,
+          "Dosage": 0,
+          "Adverse_Effect": 0
+        }
+      },
+      {
+        "text": "Increased metformin to 1000 mg twice a day. The patient noted mild gastrointestinal upset.",
+        "gold": {
+          "Drug": "metformin",
+          "Dosage": "1000 mg",
+          "Adverse_Effect": "gastrointestinal upset"
+        },
+        "raw_completion": "\n{\n\"Drug\": \"Metformin\",\n\"Dosage\": 1000,\n\"Adverse_Effect\": \"Gastrointestinal upset\"\n}\n\n```\n\nOutput:\n\n```\n{\n\"Drug\": \"Metformin\",\n\"Dosage\": 1000,\n\"Adverse_Effect\": \"G",
+        "parsed": null,
+        "exact_match": 0,
+        "field_match": {
+          "Drug": 0,
+          "Dosage": 0,
+          "Adverse_Effect": 0
+        }
+      },
+      {
+        "text": "She took a 200mg tablet of celecoxib and experienced sudden dizziness and blurry vision.",
+        "gold": {
+          "Drug": "celecoxib",
+          "Dosage": "200mg tablet",
+          "Adverse_Effect": "dizziness and blurry vision"
+        },
+        "raw_completion": "{\n\"Drug\": \"Celestone\",\n\"Dosage\": \"200mg\",\n\"Adverse_Effect\": \"Dizziness and blurry vision\"\n}\n\n```\n\nOutput:\n\n```\n{\"Drug\": \"Celestone\", \"Dosage\": \"200mg\", \"Adverse_Effect\": \"Dizziness and blurry vision",
+        "parsed": null,
+        "exact_match": 0,
+        "field_match": {
+          "Drug": 0,
+          "Dosage": 0,
+          "Adverse_Effect": 0
+        }
+      },
+      {
+        "text": "Discontinued the 50 mcg levothyroxine dose due to heart palpitations.",
+        "gold": {
+          "Drug": "levothyroxine",
+          "Dosage": "50 mcg",
+          "Adverse_Effect": "heart palpitations"
+        },
+        "raw_completion": "{\n\"Drug\": \"Dosage\",\n\"Dosage\": \"50 mcg\",\n\"Adverse_Effect\": \"Heart palpitations\"\n}\n\nThe output is:\n\n{\n\"Drug\": \"Dosage\",\n\"Dosage\": \"50 mcg\",\n\"Adverse_Effect\": \"Heart palpitations\"\n}",
+        "parsed": null,
+        "exact_match": 0,
+        "field_match": {
+          "Drug": 0,
+          "Dosage": 0,
+          "Adverse_Effect": 0
+        }
+      },
+      {
+        "text": "Applied 1% hydrocortisone cream to the affected area. Skin irritation worsened.",
+        "gold": {
+          "Drug": "hydrocortisone cream",
+          "Dosage": "1%",
+          "Adverse_Effect": "Skin irritation"
+        },
+        "raw_completion": "{\n\"Drug\": \"Corticosteroid\",\n\"Dosage\": \"1%\",\n\"Adverse_Effect\": \"Irritation\",\n\"None\": \"None\"\n}\n\n```\n\n**Output:**\n\n```\n{\n\"Drug\": \"Corticosteroid\",\n\"Dosage\": \"1%\",\n\"Adverse_",
+        "parsed": null,
+        "exact_match": 0,
+        "field_match": {
+          "Drug": 0,
+          "Dosage": 0,
+          "Adverse_Effect": 0
+        }
+      },
+      {
+        "text": "The subject ingested 5 mg of melatonin before bed and reported extreme morning grogginess.",
+        "gold": {
+          "Drug": "melatonin",
+          "Dosage": "5 mg",
+          "Adverse_Effect": "morning grogginess"
+        },
+        "raw_completion": "{\n\"Subject\": \"The subject ingested 5 mg of melatonin before bed and reported extreme morning grogginess\",\n\"Dosage\": \"5 mg\",\n\"Adverse_Effect\": \"Elevated morning grogginess\",\n\"Drug\": \"Melatonin\",\n\"Dosage\": \"5 mg\",\n\"Adverse_Effect\": \"Elevated morning",
+        "parsed": null,
+        "exact_match": 0,
+        "field_match": {
+          "Drug": 0,
+          "Dosage": 0,
+          "Adverse_Effect": 0
+        }
+      }
+    ]
+  },
+  "base_test": {
+    "label": "BASE / test-2",
+    "n": 2,
+    "exact_match": 0.0,
+    "field_acc": {
+      "Drug": 0.0,
+      "Dosage": 0.0,
+      "Adverse_Effect": 0.0
+    },
+    "macro_field_acc": 0.0,
+    "predictions": [
+      {
+        "text": "Subject received 500mg of amoxicillin but presented with hives.",
+        "gold": {
+          "Drug": "amoxicillin",
+          "Dosage": "500mg",
+          "Adverse_Effect": "hives"
+        },
+        "raw_completion": "{\n\"Drug\": \"Amoxicillin\",\n\"Dosage\": 500,\n\"Adverse_Effect\": \"Hives\"\n}\n\n```\n\nOutput:\n\n```\n{\n\"Drug\": \"Amoxicillin\",\n\"Dosage\": 500,\n\"Adverse_Effect\": \"Hives\"\n}\n",
+        "parsed": null,
+        "exact_match": 0,
+        "field_match": {
+          "Drug": 0,
+          "Dosage": 0,
+          "Adverse_Effect": 0
+        }
+      },
+      {
+        "text": "Discontinued the 50 mcg levothyroxine dose due to heart palpitations.",
+        "gold": {
+          "Drug": "levothyroxine",
+          "Dosage": "50 mcg",
+          "Adverse_Effect": "heart palpitations"
+        },
+        "raw_completion": "{\n\"Drug\": \"Dosage\",\n\"Dosage\": \"50 mcg\",\n\"Adverse_Effect\": \"Heart palpitations\"\n}\n\nThe output is:\n\n{\n\"Drug\": \"Dosage\",\n\"Dosage\": \"50 mcg\",\n\"Adverse_Effect\": \"Heart palpitations\"\n}",
+        "parsed": null,
+        "exact_match": 0,
+        "field_match": {
+          "Drug": 0,
+          "Dosage": 0,
+          "Adverse_Effect": 0
+        }
+      }
+    ]
+  },
+  "lora_full": {
+    "label": "LoRA / full-10",
+    "n": 10,
+    "exact_match": 0.9,
+    "field_acc": {
+      "Drug": 1.0,
+      "Dosage": 0.9,
+      "Adverse_Effect": 1.0
+    },
+    "macro_field_acc": 0.9666666666666667,
+    "predictions": [
+      {
+        "text": "The patient was prescribed 50mg of aspirin and subsequently developed a severe rash.",
+        "gold": {
+          "Drug": "aspirin",
+          "Dosage": "50mg",
+          "Adverse_Effect": "rash"
+        },
+        "raw_completion": "{\"Drug\": \"aspirin\", \"Dosage\": \"50mg\", \"Adverse_Effect\": \"rash\"}",
+        "parsed": {
+          "Drug": "aspirin",
+          "Dosage": "50mg",
+          "Adverse_Effect": "rash"
+        },
+        "exact_match": 1,
+        "field_match": {
+          "Drug": 1,
+          "Dosage": 1,
+          "Adverse_Effect": 1
+        }
+      },
+      {
+        "text": "After taking 10ml of ibuprofen, the child reported feeling nauseous.",
+        "gold": {
+          "Drug": "ibuprofen",
+          "Dosage": "10ml",
+          "Adverse_Effect": "nauseous"
+        },
+        "raw_completion": "{\"Drug\": \"ibuprofen\", \"Dosage\": \"10ml\", \"Adverse_Effect\": \"nauseous\"}",
+        "parsed": {
+          "Drug": "ibuprofen",
+          "Dosage": "10ml",
+          "Adverse_Effect": "nauseous"
+        },
+        "exact_match": 1,
+        "field_match": {
+          "Drug": 1,
+          "Dosage": 1,
+          "Adverse_Effect": 1
+        }
+      },
+      {
+        "text": "Administered lisinopril 20 mg daily; patient complained of dry cough.",
+        "gold": {
+          "Drug": "lisinopril",
+          "Dosage": "20 mg",
+          "Adverse_Effect": "dry cough"
+        },
+        "raw_completion": "{\"Drug\": \"lisinopril\", \"Dosage\": \"20 mg\", \"Adverse_Effect\": \"dry cough\"}",
+        "parsed": {
+          "Drug": "lisinopril",
+          "Dosage": "20 mg",
+          "Adverse_Effect": "dry cough"
+        },
+        "exact_match": 1,
+        "field_match": {
+          "Drug": 1,
+          "Dosage": 1,
+          "Adverse_Effect": 1
+        }
+      },
+      {
+        "text": "Subject received 500mg of amoxicillin but presented with hives.",
+        "gold": {
+          "Drug": "amoxicillin",
+          "Dosage": "500mg",
+          "Adverse_Effect": "hives"
+        },
+        "raw_completion": "{\"Drug\": \"amoxicillin\", \"Dosage\": \"500mg\", \"Adverse_Effect\": \"hives\"}",
+        "parsed": {
+          "Drug": "amoxicillin",
+          "Dosage": "500mg",
+          "Adverse_Effect": "hives"
+        },
+        "exact_match": 1,
+        "field_match": {
+          "Drug": 1,
+          "Dosage": 1,
+          "Adverse_Effect": 1
+        }
+      },
+      {
+        "text": "Patient was given 2 puffs of albuterol. No side effects were reported.",
+        "gold": {
+          "Drug": "albuterol",
+          "Dosage": "2 puffs",
+          "Adverse_Effect": "None"
+        },
+        "raw_completion": "{\"Drug\": \"albuterol\", \"Dosage\": \"2 puffs\", \"Adverse_Effect\": \"None\"}",
+        "parsed": {
+          "Drug": "albuterol",
+          "Dosage": "2 puffs",
+          "Adverse_Effect": "None"
+        },
+        "exact_match": 1,
+        "field_match": {
+          "Drug": 1,
+          "Dosage": 1,
+          "Adverse_Effect": 1
+        }
+      },
+      {
+        "text": "Increased metformin to 1000 mg twice a day. The patient noted mild gastrointestinal upset.",
+        "gold": {
+          "Drug": "metformin",
+          "Dosage": "1000 mg",
+          "Adverse_Effect": "gastrointestinal upset"
+        },
+        "raw_completion": "{\"Drug\": \"metformin\", \"Dosage\": \"1000 mg\", \"Adverse_Effect\": \"gastrointestinal upset\"}",
+        "parsed": {
+          "Drug": "metformin",
+          "Dosage": "1000 mg",
+          "Adverse_Effect": "gastrointestinal upset"
+        },
+        "exact_match": 1,
+        "field_match": {
+          "Drug": 1,
+          "Dosage": 1,
+          "Adverse_Effect": 1
+        }
+      },
+      {
+        "text": "She took a 200mg tablet of celecoxib and experienced sudden dizziness and blurry vision.",
+        "gold": {
+          "Drug": "celecoxib",
+          "Dosage": "200mg tablet",
+          "Adverse_Effect": "dizziness and blurry vision"
+        },
+        "raw_completion": "{\"Drug\": \"celecoxib\", \"Dosage\": \"200mg tablet\", \"Adverse_Effect\": \"dizziness and blurry vision\"}",
+        "parsed": {
+          "Drug": "celecoxib",
+          "Dosage": "200mg tablet",
+          "Adverse_Effect": "dizziness and blurry vision"
+        },
+        "exact_match": 1,
+        "field_match": {
+          "Drug": 1,
+          "Dosage": 1,
+          "Adverse_Effect": 1
+        }
+      },
+      {
+        "text": "Discontinued the 50 mcg levothyroxine dose due to heart palpitations.",
+        "gold": {
+          "Drug": "levothyroxine",
+          "Dosage": "50 mcg",
+          "Adverse_Effect": "heart palpitations"
+        },
+        "raw_completion": "{\"Drug\": \"levothyroxine\", \"Dosage\": \"50 mg\", \"Adverse_Effect\": \"heart palpitations\"}",
+        "parsed": {
+          "Drug": "levothyroxine",
+          "Dosage": "50 mg",
+          "Adverse_Effect": "heart palpitations"
+        },
+        "exact_match": 0,
+        "field_match": {
+          "Drug": 1,
+          "Dosage": 0,
+          "Adverse_Effect": 1
+        }
+      },
+      {
+        "text": "Applied 1% hydrocortisone cream to the affected area. Skin irritation worsened.",
+        "gold": {
+          "Drug": "hydrocortisone cream",
+          "Dosage": "1%",
+          "Adverse_Effect": "Skin irritation"
+        },
+        "raw_completion": "{\"Drug\": \"hydrocortisone cream\", \"Dosage\": \"1%\", \"Adverse_Effect\": \"Skin irritation\"}",
+        "parsed": {
+          "Drug": "hydrocortisone cream",
+          "Dosage": "1%",
+          "Adverse_Effect": "Skin irritation"
+        },
+        "exact_match": 1,
+        "field_match": {
+          "Drug": 1,
+          "Dosage": 1,
+          "Adverse_Effect": 1
+        }
+      },
+      {
+        "text": "The subject ingested 5 mg of melatonin before bed and reported extreme morning grogginess.",
+        "gold": {
+          "Drug": "melatonin",
+          "Dosage": "5 mg",
+          "Adverse_Effect": "morning grogginess"
+        },
+        "raw_completion": "{\"Drug\": \"melatonin\", \"Dosage\": \"5 mg\", \"Adverse_Effect\": \"morning grogginess\"}",
+        "parsed": {
+          "Drug": "melatonin",
+          "Dosage": "5 mg",
+          "Adverse_Effect": "morning grogginess"
+        },
+        "exact_match": 1,
+        "field_match": {
+          "Drug": 1,
+          "Dosage": 1,
+          "Adverse_Effect": 1
+        }
+      }
+    ]
+  },
+  "lora_test": {
+    "label": "LoRA / test-2",
+    "n": 2,
+    "exact_match": 0.5,
+    "field_acc": {
+      "Drug": 1.0,
+      "Dosage": 0.5,
+      "Adverse_Effect": 1.0
+    },
+    "macro_field_acc": 0.8333333333333334,
+    "predictions": [
+      {
+        "text": "Subject received 500mg of amoxicillin but presented with hives.",
+        "gold": {
+          "Drug": "amoxicillin",
+          "Dosage": "500mg",
+          "Adverse_Effect": "hives"
+        },
+        "raw_completion": "{\"Drug\": \"amoxicillin\", \"Dosage\": \"500mg\", \"Adverse_Effect\": \"hives\"}",
+        "parsed": {
+          "Drug": "amoxicillin",
+          "Dosage": "500mg",
+          "Adverse_Effect": "hives"
+        },
+        "exact_match": 1,
+        "field_match": {
+          "Drug": 1,
+          "Dosage": 1,
+          "Adverse_Effect": 1
+        }
+      },
+      {
+        "text": "Discontinued the 50 mcg levothyroxine dose due to heart palpitations.",
+        "gold": {
+          "Drug": "levothyroxine",
+          "Dosage": "50 mcg",
+          "Adverse_Effect": "heart palpitations"
+        },
+        "raw_completion": "{\"Drug\": \"levothyroxine\", \"Dosage\": \"50 mg\", \"Adverse_Effect\": \"heart palpitations\"}",
+        "parsed": {
+          "Drug": "levothyroxine",
+          "Dosage": "50 mg",
+          "Adverse_Effect": "heart palpitations"
+        },
+        "exact_match": 0,
+        "field_match": {
+          "Drug": 1,
+          "Dosage": 0,
+          "Adverse_Effect": 1
+        }
+      }
+    ]
+  },
+  "lora_train": {
+    "label": "LoRA / train-8",
+    "n": 8,
+    "exact_match": 1.0,
+    "field_acc": {
+      "Drug": 1.0,
+      "Dosage": 1.0,
+      "Adverse_Effect": 1.0
+    },
+    "macro_field_acc": 1.0,
+    "predictions": [
+      {
+        "text": "The patient was prescribed 50mg of aspirin and subsequently developed a severe rash.",
+        "gold": {
+          "Drug": "aspirin",
+          "Dosage": "50mg",
+          "Adverse_Effect": "rash"
+        },
+        "raw_completion": "{\"Drug\": \"aspirin\", \"Dosage\": \"50mg\", \"Adverse_Effect\": \"rash\"}",
+        "parsed": {
+          "Drug": "aspirin",
+          "Dosage": "50mg",
+          "Adverse_Effect": "rash"
+        },
+        "exact_match": 1,
+        "field_match": {
+          "Drug": 1,
+          "Dosage": 1,
+          "Adverse_Effect": 1
+        }
+      },
+      {
+        "text": "After taking 10ml of ibuprofen, the child reported feeling nauseous.",
+        "gold": {
+          "Drug": "ibuprofen",
+          "Dosage": "10ml",
+          "Adverse_Effect": "nauseous"
+        },
+        "raw_completion": "{\"Drug\": \"ibuprofen\", \"Dosage\": \"10ml\", \"Adverse_Effect\": \"nauseous\"}",
+        "parsed": {
+          "Drug": "ibuprofen",
+          "Dosage": "10ml",
+          "Adverse_Effect": "nauseous"
+        },
+        "exact_match": 1,
+        "field_match": {
+          "Drug": 1,
+          "Dosage": 1,
+          "Adverse_Effect": 1
+        }
+      },
+      {
+        "text": "Administered lisinopril 20 mg daily; patient complained of dry cough.",
+        "gold": {
+          "Drug": "lisinopril",
+          "Dosage": "20 mg",
+          "Adverse_Effect": "dry cough"
+        },
+        "raw_completion": "{\"Drug\": \"lisinopril\", \"Dosage\": \"20 mg\", \"Adverse_Effect\": \"dry cough\"}",
+        "parsed": {
+          "Drug": "lisinopril",
+          "Dosage": "20 mg",
+          "Adverse_Effect": "dry cough"
+        },
+        "exact_match": 1,
+        "field_match": {
+          "Drug": 1,
+          "Dosage": 1,
+          "Adverse_Effect": 1
+        }
+      },
+      {
+        "text": "Patient was given 2 puffs of albuterol. No side effects were reported.",
+        "gold": {
+          "Drug": "albuterol",
+          "Dosage": "2 puffs",
+          "Adverse_Effect": "None"
+        },
+        "raw_completion": "{\"Drug\": \"albuterol\", \"Dosage\": \"2 puffs\", \"Adverse_Effect\": \"None\"}",
+        "parsed": {
+          "Drug": "albuterol",
+          "Dosage": "2 puffs",
+          "Adverse_Effect": "None"
+        },
+        "exact_match": 1,
+        "field_match": {
+          "Drug": 1,
+          "Dosage": 1,
+          "Adverse_Effect": 1
+        }
+      },
+      {
+        "text": "Increased metformin to 1000 mg twice a day. The patient noted mild gastrointestinal upset.",
+        "gold": {
+          "Drug": "metformin",
+          "Dosage": "1000 mg",
+          "Adverse_Effect": "gastrointestinal upset"
+        },
+        "raw_completion": "{\"Drug\": \"metformin\", \"Dosage\": \"1000 mg\", \"Adverse_Effect\": \"gastrointestinal upset\"}",
+        "parsed": {
+          "Drug": "metformin",
+          "Dosage": "1000 mg",
+          "Adverse_Effect": "gastrointestinal upset"
+        },
+        "exact_match": 1,
+        "field_match": {
+          "Drug": 1,
+          "Dosage": 1,
+          "Adverse_Effect": 1
+        }
+      },
+      {
+        "text": "She took a 200mg tablet of celecoxib and experienced sudden dizziness and blurry vision.",
+        "gold": {
+          "Drug": "celecoxib",
+          "Dosage": "200mg tablet",
+          "Adverse_Effect": "dizziness and blurry vision"
+        },
+        "raw_completion": "{\"Drug\": \"celecoxib\", \"Dosage\": \"200mg tablet\", \"Adverse_Effect\": \"dizziness and blurry vision\"}",
+        "parsed": {
+          "Drug": "celecoxib",
+          "Dosage": "200mg tablet",
+          "Adverse_Effect": "dizziness and blurry vision"
+        },
+        "exact_match": 1,
+        "field_match": {
+          "Drug": 1,
+          "Dosage": 1,
+          "Adverse_Effect": 1
+        }
+      },
+      {
+        "text": "Applied 1% hydrocortisone cream to the affected area. Skin irritation worsened.",
+        "gold": {
+          "Drug": "hydrocortisone cream",
+          "Dosage": "1%",
+          "Adverse_Effect": "Skin irritation"
+        },
+        "raw_completion": "{\"Drug\": \"hydrocortisone cream\", \"Dosage\": \"1%\", \"Adverse_Effect\": \"Skin irritation\"}",
+        "parsed": {
+          "Drug": "hydrocortisone cream",
+          "Dosage": "1%",
+          "Adverse_Effect": "Skin irritation"
+        },
+        "exact_match": 1,
+        "field_match": {
+          "Drug": 1,
+          "Dosage": 1,
+          "Adverse_Effect": 1
+        }
+      },
+      {
+        "text": "The subject ingested 5 mg of melatonin before bed and reported extreme morning grogginess.",
+        "gold": {
+          "Drug": "melatonin",
+          "Dosage": "5 mg",
+          "Adverse_Effect": "morning grogginess"
+        },
+        "raw_completion": "{\"Drug\": \"melatonin\", \"Dosage\": \"5 mg\", \"Adverse_Effect\": \"morning grogginess\"}",
+        "parsed": {
+          "Drug": "melatonin",
+          "Dosage": "5 mg",
+          "Adverse_Effect": "morning grogginess"
+        },
+        "exact_match": 1,
+        "field_match": {
+          "Drug": 1,
+          "Dosage": 1,
+          "Adverse_Effect": 1
+        }
+      }
+    ]
+  }
+}
