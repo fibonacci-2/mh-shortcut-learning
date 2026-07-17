@@ -1,0 +1,4 @@
+[   0.0s] canonical shortcuts (8): ['fp_singular', 'analytic', 'body_health', 'post_length', 'self_ref_rumination', 'hedge_density', 'negative_emotion', 'emotional_feeling']
+[ 227.5s]   mediation fp_singular          ACME=+0.03499 prop=13.5% ***
+[ 645.1s]   mediation analytic             ACME=+0.03176 prop=12.2% ***
+[1128.2s]   mediation body_health          ACME=+0.01945 prop=7.5% ***

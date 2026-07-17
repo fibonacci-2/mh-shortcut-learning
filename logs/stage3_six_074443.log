@@ -1,0 +1,15 @@
+[   0.0s] 6 shortcuts: ['fp_singular', 'body_health', 'post_length', 'hedge_density', 'negative_emotion', 'emotional_feeling']
+[ 194.5s]   mediation fp_singular        ACME=+0.03499 prop=13.5% ***
+[ 393.1s]   mediation body_health        ACME=+0.01945 prop= 7.5% ***
+[ 598.2s]   mediation post_length        ACME=+0.00596 prop= 2.3% ***
+[ 963.1s]   mediation hedge_density      ACME=+0.00215 prop= 0.8% ***
+[1338.7s]   mediation negative_emotion   ACME=+0.01426 prop= 5.5% ***
+[1698.1s]   mediation emotional_feeling  ACME=+0.00912 prop= 3.5% ***
+[1698.2s] mediation sum(prop)=33.2%  saved.
+[1912.3s] baseline frozen: gender=0.9590 label=0.7981
+[2646.1s]   erase fp_singular        concept 0.976->0.946 label d=-0.0002 rem=15
+[3536.5s]   erase body_health        concept 0.885->0.842 label d=-0.0006 rem=15
+[4208.6s]   erase post_length        concept 0.997->0.968 label d=-0.0002 rem=15
+[5217.4s]   erase hedge_density      concept 0.832->0.745 label d=-0.0001 rem=15
+[5995.5s]   erase negative_emotion   concept 0.895->0.857 label d=-0.0003 rem=15
+[6898.4s]   erase emotional_feeling  concept 0.859->0.793 label d=-0.0001 rem=15

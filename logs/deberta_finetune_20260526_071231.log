@@ -1,0 +1,60 @@
+[    0.1s] GPUs=4  effective batch=64
+[    0.3s] train=25760 val=6440
+Loading weights:   0%|          | 0/198 [00:00<?, ?it/s]Loading weights:   2%|▏         | 3/198 [00:02<02:32,  1.28it/s]Loading weights: 100%|██████████| 198/198 [00:02<00:00, 84.05it/s]
+[1mDebertaV2ForSequenceClassification LOAD REPORT[0m from: microsoft/deberta-v3-base
+Key                                     | Status     | 
+----------------------------------------+------------+-
+lm_predictions.lm_head.LayerNorm.weight | UNEXPECTED | 
+lm_predictions.lm_head.bias             | UNEXPECTED | 
+mask_predictions.classifier.bias        | UNEXPECTED | 
+mask_predictions.dense.bias             | UNEXPECTED | 
+mask_predictions.dense.weight           | UNEXPECTED | 
+mask_predictions.classifier.weight      | UNEXPECTED | 
+mask_predictions.LayerNorm.bias         | UNEXPECTED | 
+lm_predictions.lm_head.dense.bias       | UNEXPECTED | 
+mask_predictions.LayerNorm.weight       | UNEXPECTED | 
+lm_predictions.lm_head.dense.weight     | UNEXPECTED | 
+lm_predictions.lm_head.LayerNorm.bias   | UNEXPECTED | 
+classifier.weight                       | MISSING    | 
+pooler.dense.weight                     | MISSING    | 
+classifier.bias                         | MISSING    | 
+pooler.dense.bias                       | MISSING    | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+- MISSING:	those params were newly initialized because missing from the checkpoint. Consider training on your downstream task.
+[   13.5s]   ep0 step0/403 loss=0.7262
+[   35.8s]   ep0 step100/403 loss=0.4278
+[   58.2s]   ep0 step200/403 loss=0.4541
+[   80.2s]   ep0 step300/403 loss=0.4899
+[  102.2s]   ep0 step400/403 loss=0.4990
+[  115.2s] epoch 0: val AUC=0.8157 F1=0.5957
+Writing model shards:   0%|          | 0/1 [00:00<?, ?it/s]Writing model shards: 100%|██████████| 1/1 [00:01<00:00,  1.69s/it]Writing model shards: 100%|██████████| 1/1 [00:01<00:00,  1.69s/it]
+[  116.9s]   ↳ saved best (AUC=0.8157)
+[  117.5s]   ep1 step0/403 loss=0.4600
+[  139.7s]   ep1 step100/403 loss=0.4382
+[  162.1s]   ep1 step200/403 loss=0.4374
+[  184.8s]   ep1 step300/403 loss=0.3863
+[  215.2s]   ep1 step400/403 loss=0.4724
+[  234.4s] epoch 1: val AUC=0.8204 F1=0.6079
+Writing model shards:   0%|          | 0/1 [00:00<?, ?it/s]Writing model shards: 100%|██████████| 1/1 [00:02<00:00,  2.81s/it]Writing model shards: 100%|██████████| 1/1 [00:02<00:00,  2.83s/it]
+[  237.2s]   ↳ saved best (AUC=0.8204)
+[  238.2s]   ep2 step0/403 loss=0.3368
+[  272.6s]   ep2 step100/403 loss=0.4068
+[  306.2s]   ep2 step200/403 loss=0.3554
+[  341.2s]   ep2 step300/403 loss=0.3740
+[  376.4s]   ep2 step400/403 loss=0.3658
+[  397.2s] epoch 2: val AUC=0.8175 F1=0.6178
+[  397.2s] FINE-TUNE DONE. best val AUC=0.8204
+Loading weights:   0%|          | 0/198 [00:00<?, ?it/s]Loading weights: 100%|██████████| 198/198 [00:00<00:00, 3616.79it/s]
+[1mDebertaV2Model LOAD REPORT[0m from: data/stage2_deberta/finetuned/ft_model
+Key                 | Status     |  | 
+--------------------+------------+--+-
+pooler.dense.bias   | UNEXPECTED |  | 
+classifier.bias     | UNEXPECTED |  | 
+pooler.dense.weight | UNEXPECTED |  | 
+classifier.weight   | UNEXPECTED |  | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+[  489.6s] saved cls_embeddings (32200, 768)

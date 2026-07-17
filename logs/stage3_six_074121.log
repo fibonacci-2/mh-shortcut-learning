@@ -1,0 +1,34 @@
+[   0.0s] 6 shortcuts: ['fp_singular', 'body_health', 'post_length', 'hedge_density', 'negative_emotion', 'emotional_feeling']
+joblib.externals.loky.process_executor._RemoteTraceback: 
+"""
+Traceback (most recent call last):
+  File "/gpfs/automountdir/gpfs/homes/SEAS/home/g21775526/code/mh-shortcut-learning/.venv/lib/python3.13/site-packages/joblib/externals/loky/process_executor.py", line 453, in _process_worker
+    call_item = call_queue.get(block=True, timeout=timeout)
+  File "/c1/apps/python3/3.13.3/lib/python3.13/multiprocessing/queues.py", line 120, in get
+    return _ForkingPickler.loads(res)
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^
+AttributeError: Can't get attribute 'expit' on <module 'joblib.externals.loky.backend.popen_loky_posix' from '/gpfs/automountdir/gpfs/homes/SEAS/home/g21775526/code/mh-shortcut-learning/.venv/lib/python3.13/site-packages/joblib/externals/loky/backend/popen_loky_posix.py'>
+"""
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/gpfs/automountdir/gpfs/homes/SEAS/home/g21775526/code/mh-shortcut-learning/_stage3_six.py", line 55, in <module>
+    boots = Parallel(n_jobs=-1)(delayed(lambda ix: compute_mediation(G[ix], Y[ix], M[ix])[0])(ix) for ix in idxs)
+  File "/gpfs/automountdir/gpfs/homes/SEAS/home/g21775526/code/mh-shortcut-learning/.venv/lib/python3.13/site-packages/joblib/parallel.py", line 2072, in __call__
+    return output if self.return_generator else list(output)
+                                                ~~~~^^^^^^^^
+  File "/gpfs/automountdir/gpfs/homes/SEAS/home/g21775526/code/mh-shortcut-learning/.venv/lib/python3.13/site-packages/joblib/parallel.py", line 1682, in _get_outputs
+    yield from self._retrieve()
+  File "/gpfs/automountdir/gpfs/homes/SEAS/home/g21775526/code/mh-shortcut-learning/.venv/lib/python3.13/site-packages/joblib/parallel.py", line 1784, in _retrieve
+    self._raise_error_fast()
+    ~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/gpfs/automountdir/gpfs/homes/SEAS/home/g21775526/code/mh-shortcut-learning/.venv/lib/python3.13/site-packages/joblib/parallel.py", line 1859, in _raise_error_fast
+    error_job.get_result(self.timeout)
+    ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/gpfs/automountdir/gpfs/homes/SEAS/home/g21775526/code/mh-shortcut-learning/.venv/lib/python3.13/site-packages/joblib/parallel.py", line 758, in get_result
+    return self._return_or_raise()
+           ~~~~~~~~~~~~~~~~~~~~~^^
+  File "/gpfs/automountdir/gpfs/homes/SEAS/home/g21775526/code/mh-shortcut-learning/.venv/lib/python3.13/site-packages/joblib/parallel.py", line 773, in _return_or_raise
+    raise self._result
+joblib.externals.loky.process_executor.BrokenProcessPool: A task has failed to un-serialize. Please ensure that the arguments of the function are all picklable.
